@@ -1,0 +1,34 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · RedQueen</title>
+  <link rel="stylesheet" href="{% static 'web/style.css' %}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{% url 'dashboard' %}">RedQueen</a>
+  {% if user.is_authenticated %}
+  <nav aria-label="Main">
+    {% with name=request.resolver_match.url_name %}
+    <a href="{% url 'dashboard' %}" {% if name == 'dashboard' %}class="active" aria-current="page"{% endif %}>COMPSTAT</a>
+    <a href="{% url 'intake-new' %}" {% if name == 'intake-new' %}class="active" aria-current="page"{% endif %}>New intake</a>
+    <a href="{% url 'intake-list' %}" {% if name == 'intake-list' or name == 'intake-detail' %}class="active"{% endif %}>Intakes</a>
+    <a href="{% url 'profile-list' %}" {% if name == 'profile-list' or name == 'profile-detail' %}class="active"{% endif %}>Profiles</a>
+    <a href="{% url 'person-list' %}" {% if name == 'person-list' or name == 'person-detail' %}class="active"{% endif %}>People</a>
+    {% if perms.cases.view_auditevent %}<a href="{% url 'audit' %}" {% if name == 'audit' %}class="active"{% endif %}>Audit</a>{% endif %}
+    {% endwith %}
+  </nav>
+  <div class="userbox">
+    <span>{{ user.get_username }}</span>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn ghost small" type="submit">Log out</button></form>
+  </div>
+  {% endif %}
+</header>
+<main>
+  {% if messages %}<ul class="messages" role="status">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

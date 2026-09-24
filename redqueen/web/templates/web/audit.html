@@ -1,0 +1,15 @@
+{% extends "web/base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Audit log</h1><p class="muted" style="margin:0">Append-only record of identifications, reviews and judgments.</p></div>
+  <form class="inline" method="get"><label for="action" class="small" style="margin:0">Action</label>
+    <select name="action" id="action" onchange="this.form.submit()"><option value="">All</option>
+    {% for a in actions %}<option value="{{ a }}" {% if a == action %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></form></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead>
+  <tbody>{% for e in page %}
+    <tr><td class="mono small">{{ e.created_at|date:"Y-m-d H:i:s" }}</td><td>{{ e.actor.get_username|default:"system" }}</td><td>{{ e.action }}</td><td class="mono small">{{ e.target }}</td>
+      <td class="mono small muted">{{ e.detail }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="empty">Nothing logged yet.</td></tr>{% endfor %}</tbody>
+</table></div>{% include "web/_pagination.html" %}</div>
+{% endblock %}

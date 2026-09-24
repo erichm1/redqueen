@@ -1,0 +1,13 @@
+{% extends "web/base.html" %}
+{% block title %}Intakes{% endblock %}
+{% block content %}
+<div class="pagehead"><h1>Intakes</h1><a class="btn" href="{% url 'intake-new' %}">New intake</a></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>#</th><th>When</th><th>Type</th><th>Precinct</th><th>Result</th><th>Faces</th><th>Identified</th><th>Suspect profiles</th></tr></thead>
+  <tbody>{% for i in page %}
+    <tr><td><a href="{% url 'intake-detail' i.pk %}">{{ i.pk }}</a></td><td>{{ i.created_at|date:"Y-m-d H:i" }}</td><td>{{ i.media_type }}</td><td>{{ i.precinct|default:"–" }}</td>
+      <td><span class="badge {{ i.status }}">{{ i.get_status_display }}</span></td>
+      <td>{{ i.faces_detected }}</td><td>{{ i.n_identified }}</td><td>{{ i.n_profiles }}</td></tr>
+  {% empty %}<tr><td colspan="8" class="empty">No intakes yet.</td></tr>{% endfor %}</tbody>
+</table></div>{% include "web/_pagination.html" %}</div>
+{% endblock %}

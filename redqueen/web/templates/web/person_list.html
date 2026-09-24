@@ -1,0 +1,12 @@
+{% extends "web/base.html" %}
+{% block title %}People{% endblock %}
+{% block content %}
+<div class="pagehead"><h1>People</h1>{% if can_enroll %}<a class="btn" href="{% url 'person-enroll' %}">Enroll person</a>{% endif %}
+  <form class="inline" method="get" role="search"><label for="q" class="small" style="margin:0">Name</label><input type="text" id="q" name="q" value="{{ q }}"><button class="secondary">Search</button></form></div>
+<div class="card flush"><div class="table-wrap"><table>
+  <thead><tr><th>Name</th><th>Born</th><th>Infractions</th><th>Open</th></tr></thead>
+  <tbody>{% for p in page %}
+    <tr><td><a href="{% url 'person-detail' p.pk %}">{{ p.full_name }}</a></td><td>{{ p.date_of_birth|default:"–" }}</td><td>{{ p.n_infractions }}</td><td>{{ p.n_open }}</td></tr>
+  {% empty %}<tr><td colspan="4" class="empty">No people found.</td></tr>{% endfor %}</tbody>
+</table></div>{% include "web/_pagination.html" %}</div>
+{% endblock %}

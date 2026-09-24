@@ -1,0 +1,24 @@
+{% load web_extras %}{% if timeline %}
+<svg class="timeline" viewBox="0 0 560 120" role="img" aria-label="Severity of each infraction over time" style="width:100%;max-width:560px;height:auto;margin-bottom:.5rem">
+  <line class="grid" x1="0" x2="560" y1="104" y2="104"/>
+  {% for b in timeline %}
+    <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}" rx="2" fill="{% if b.convicted %}var(--high){% else %}var(--moderate){% endif %}"><title>{{ b.date }} {{ b.category }}, severity {{ b.severity }}{% if b.convicted %}, convicted{% endif %}</title></rect>
+    <text x="{{ b.label_x }}" y="{{ b.label_y }}">{{ b.date }}</text>
+  {% endfor %}
+</svg>
+<p class="muted small"><span class="up">■</span> convicted &nbsp; <span style="color:var(--moderate)">■</span> not convicted · bar height = severity (1–5)</p>
+{% endif %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Date</th><th>Category</th><th>Sev.</th><th>Precinct</th><th>Status</th><th>Penalties</th></tr></thead>
+  <tbody>
+  {% for i in infractions %}
+    <tr>
+      <td class="mono">{{ i.occurred_at|slice:":10" }}</td>
+      <td>{{ i.category|capfirst }}</td><td>{{ i.severity }}</td><td>{{ i.precinct|default:"–" }}</td>
+      <td><span class="badge {% if i.status == 'open' %}moderate{% else %}neutral{% endif %}">{{ i.status }}</span>{% if i.convicted %} <span class="badge high">convicted</span>{% endif %}</td>
+      <td>{% for p in i.penalties %}{{ p.kind|unscore }}{% if p.amount %} {{ p.amount }}{% endif %}{% if p.hours %} {{ p.hours }}h{% endif %}{% if p.months %} {{ p.months }}mo{% endif %} <span class="muted">({{ p.status }})</span>{% if not forloop.last %}<br>{% endif %}{% empty %}<span class="muted">–</span>{% endfor %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="6" class="empty">No records.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>

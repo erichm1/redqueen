@@ -1,0 +1,62 @@
+{% extends "web/base.html" %}
+{% block title %}COMPSTAT{% endblock %}
+{% block content %}
+{% with intel=report.intelligence follow=report.follow_up %}
+<div class="pagehead">
+  <div><h1>COMPSTAT</h1><p class="muted" style="margin:0">Last {{ days }} days vs the {{ days }} before · {{ report.period.start|date:"Y-m-d" }} → {{ report.period.end|date:"Y-m-d" }}</p></div>
+  <form class="inline" method="get" aria-label="Period">
+    {% for d in day_options %}<a class="btn {% if d == days %}secondary{% else %}ghost{% endif %}" href="?days={{ d }}">{{ d }}d</a>{% endfor %}
+  </form>
+</div>
+
+<div class="grid cols-4">
+  <div class="card stat"><h3>Incidents</h3><div class="value">{{ intel.total }}</div>
+    <div class="delta {% if intel.change_pct and intel.change_pct > 0 %}up{% elif intel.change_pct and intel.change_pct < 0 %}down{% endif %}">
+      {% if intel.change_pct is None %}no change{% else %}{% if intel.change_pct > 0 %}▲{% elif intel.change_pct < 0 %}▼{% endif %} {{ intel.change_pct }}%{% endif %} <span class="muted">vs {{ intel.previous_total }}</span></div></div>
+  <div class="card stat"><h3>Open cases</h3><div class="value">{{ follow.open_infractions }}</div><div class="delta muted">{{ follow.open_older_than_30_days }} older than 30 days</div></div>
+  <div class="card stat"><h3>Penalties pending</h3><div class="value">{{ follow.pending_penalties }}</div><div class="delta {% if follow.defaulted_penalties %}up{% else %}muted{% endif %}">{{ follow.defaulted_penalties }} defaulted</div></div>
+  <div class="card stat"><h3>High-risk watchlist</h3><div class="value">{{ follow.high_risk_watchlist|length }}</div><div class="delta muted">advisory scores</div></div>
+</div>
+
+<div class="grid cols-2" style="margin-top:1rem">
+  <section class="card" aria-labelledby="h-intel">
+    <h2 id="h-intel">1 · Intelligence: incidents by precinct</h2>
+    {% for r in intel.by_precinct %}
+      <div class="barrow"><span>{{ r.precinct }}</span><div class="bar" role="img" aria-label="{{ r.incidents }} incidents"><span style="width:{{ r.bar_pct }}%"></span></div>
+        <span class="num">{{ r.incidents }}</span></div>
+      <div class="muted small" style="margin:-.2rem 0 .3rem 9.75rem">{% if r.change_pct is None %}no change{% else %}{{ r.change_pct|stringformat:"+.1f" }}%{% endif %} · severity load {{ r.severity_load }}</div>
+    {% empty %}<p class="empty">No incidents in this period.</p>{% endfor %}
+    <h3 style="margin-top:1rem">By category</h3>
+    {% for name, n, pct in categories %}
+      <div class="barrow"><span>{{ name|capfirst }}</span><div class="bar"><span style="width:{{ pct }}%"></span></div><span class="num">{{ n }}</span></div>
+    {% endfor %}
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="h-tactics">
+      <h2 id="h-tactics">2 · Tactics: hot spots</h2>
+      {% for h in report.tactics %}<p style="margin:.2rem 0"><strong>{{ h.precinct }}</strong><br><span class="muted">{{ h.recommendation }}</span></p>
+      {% empty %}<p class="muted">Nothing to flag.</p>{% endfor %}
+    </section>
+    <section class="card" aria-labelledby="h-deploy">
+      <h2 id="h-deploy">3 · Deployment: suggested resource share</h2>
+      {% for d in report.deployment %}
+        <div class="barrow"><span>{{ d.precinct }}</span><div class="bar"><span style="width:{{ d.share_pct }}%"></span></div><span class="num">{{ d.share_pct }}%</span></div>
+      {% empty %}<p class="muted">No load to distribute.</p>{% endfor %}
+      <p class="muted small" style="margin-bottom:0">Proportional to severity-weighted incident load.</p>
+    </section>
+  </div>
+</div>
+
+<section class="card flush" style="margin-top:1rem" aria-labelledby="h-follow">
+  <h2 id="h-follow">4 · Follow-up: high-risk watchlist</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Person</th><th>Score</th><th>Trajectory</th></tr></thead>
+    <tbody>{% for w in follow.high_risk_watchlist %}
+      <tr><td><a href="{% url 'person-detail' w.person_id %}">{{ w.name }}</a></td><td class="mono">{{ w.score }}</td>
+        <td>{% if w.trajectory == "more_severe" %}<span class="up">▲ more severe</span>{% elif w.trajectory == "less_severe" %}<span class="down">▼ less severe</span>{% else %}▬ similar{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="3" class="empty">Nobody currently rated high.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endwith %}
+{% endblock %}

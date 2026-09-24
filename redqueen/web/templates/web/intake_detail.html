@@ -1,0 +1,59 @@
+{% extends "web/base.html" %}
+{% block title %}Intake {{ intake.pk }}{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Intake #{{ intake.pk }}</h1><p class="muted" style="margin:0">{{ intake.created_at|date:"Y-m-d H:i" }} · {{ intake.precinct|default:"no precinct" }} · <span class="badge {{ intake.status }}">{{ intake.get_status_display }}</span></p></div>
+  <a class="btn secondary" href="{% url 'intake-new' %}">Another intake</a></div>
+
+<div class="grid cols-2" style="grid-template-columns: minmax(0, 3fr) minmax(0, 2fr)">
+  <section class="card" aria-label="Media with detected faces">
+    {% if intake.media_type == 'video' %}
+      {% if intake.annotated %}<img class="annotated" src="{% url 'intake-annotated' intake.pk %}" alt="Annotated frame from the video, each detected face boxed and numbered">
+      <p class="muted small">Annotated frame from the video. Percentages for people are averaged over the frames they appear in.</p>{% endif %}
+      <video class="media-preview" controls src="{% url 'intake-media' intake.pk %}" style="margin-top:.6rem"></video>
+    {% elif intake.annotated %}<img class="annotated" src="{% url 'intake-annotated' intake.pk %}" alt="Submitted photo, each detected face boxed and numbered with its similarity">
+    {% else %}<img class="annotated" src="{% url 'intake-media' intake.pk %}" alt="Submitted photo">{% endif %}
+    <div class="legend">
+      <span><i style="background:#e5324b"></i>identified, has a record</span><span><i style="background:#3fb97a"></i>identified, no record</span>
+      <span><i style="background:#e0a72b"></i>ambiguous</span><span><i style="background:#a0a0a0"></i>unknown</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <dl class="kv">
+      <dt>Faces found</dt><dd>{{ intake.faces_detected }}</dd>
+      <dt>Identified</dt><dd>{{ identified }}</dd>
+      <dt>Suspect profiles</dt><dd>{{ profiles|length }}</dd>
+      <dt>Match threshold</dt><dd class="pct">{{ intake.threshold_pct|default_if_none:"–" }}%</dd>
+      <dt>Engine</dt><dd class="mono">{{ intake.engine }}</dd>
+    </dl>
+    {% if synthetic %}<p class="notice small" style="margin-top:1rem">Synthetic test engine: not real face recognition.</p>{% endif %}
+    <p class="muted small" style="margin-bottom:0">Similarity is the cosine similarity between the face in this media and the closest registered face, as a percentage. It measures how alike two faces look to the model; it is <strong>not</strong> the probability that the identification is correct. A face is accepted only at or above the threshold (the white tick).</p>
+    {% if profiles %}
+    <h3 style="margin-top:1.1rem">Suspect profiles</h3>
+    <ul class="checklist">{% for p in profiles %}<li><a href="{% url 'profile-detail' p.pk %}">{{ p.person.full_name }}</a> <span class="badge {{ p.status }}">{{ p.get_status_display }}</span></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card flush" style="margin-top:1rem" aria-labelledby="h-faces">
+  <h2 id="h-faces">Faces</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Result</th><th>Registered person</th><th style="min-width:200px">Similarity</th><th>Closest registered</th><th>Profile</th></tr></thead>
+    <tbody>{% for r in rows %}{% with f=r.face %}
+      <tr>
+        <td class="mono">{{ f.index }}</td>
+        <td><span class="badge {{ f.status }}">{% if f.status == 'matched' %}identified{% elif f.status == 'ambiguous' %}ambiguous{% else %}unknown{% endif %}</span>{% if f.support > 1 %}<div class="cand">seen in {{ f.support }} frames</div>{% endif %}{% if not f.box %}<div class="cand">not in the annotated frame</div>{% endif %}</td>
+        <td>{% if f.person %}<a href="{% url 'person-detail' f.person_id %}">{{ f.person.full_name }}</a>{% else %}–{% endif %}</td>
+        <td>{% if f.score is not None %}
+          <div class="pct">{{ f.similarity_pct }}%</div>
+          <div class="meter {{ f.status }}" role="img" aria-label="Similarity {{ f.similarity_pct }} percent, threshold {{ intake.threshold_pct }} percent"><span style="width:{{ f.similarity_pct }}%"></span><i class="tick" style="left:{{ intake.threshold_pct }}%"></i></div>
+          {% if f.runner_up_pct is not None and f.runner_up_pct > 0 %}<div class="cand">next closest person {{ f.runner_up_pct }}%</div>{% endif %}
+        {% else %}<span class="muted">–</span>{% endif %}</td>
+        <td>{% for c in r.candidates %}<div class="cand">{{ c.name }} <span class="mono">{{ c.pct }}%</span></div>{% empty %}<span class="muted">nobody enrolled</span>{% endfor %}</td>
+        <td>{% if r.profile %}<a href="{% url 'profile-detail' r.profile.pk %}">Profile #{{ r.profile.pk }}</a>{% elif f.status == 'matched' %}<span class="muted">nothing on record</span>{% else %}–{% endif %}</td>
+      </tr>{% endwith %}
+    {% empty %}<tr><td colspan="6" class="empty">No face was detected in this media.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

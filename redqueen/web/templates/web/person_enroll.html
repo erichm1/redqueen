@@ -1,0 +1,24 @@
+{% extends "web/base.html" %}
+{% block title %}Enroll person{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Enroll a person</h1>
+  <p class="muted" style="margin:0">Capture a face with your webcam and attach a dummy record, so you can test the pipeline end to end.</p></div></div>
+<form class="card" method="post" enctype="multipart/form-data" style="max-width:680px">{% csrf_token %}
+  {% if synthetic %}<p class="notice danger small">Engine is <span class="mono">synthetic</span>: webcam enrolment only works with the real engine. Restart the server without <span class="mono">REDQUEEN_VISION_ENGINE=synthetic</span>.</p>{% endif %}
+  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <div class="grid cols-2">
+    <div class="field"><label for="{{ form.full_name.id_for_label }}">Name (use a dummy name)</label>{{ form.full_name }}{{ form.full_name.errors }}</div>
+    <div class="field"><label for="{{ form.date_of_birth.id_for_label }}">Date of birth (optional)</label>{{ form.date_of_birth }}{{ form.date_of_birth.errors }}</div>
+  </div>
+  <div class="field"><label for="{{ form.scenario.id_for_label }}">{{ form.scenario.label }}</label>{{ form.scenario }}{{ form.scenario.errors }}</div>
+
+  <h3>Face photos</h3>
+  <p class="muted small">Take 2–{{ max_photos }} photos with slightly different head angles. Each must show exactly one face. Only the numeric face template is stored, not the photos.</p>
+  {% include "web/_webcam.html" with input_id=form.photos.id_for_label allow_video=False max_photos=max_photos %}
+  <div class="field"><label for="{{ form.photos.id_for_label }}">…or choose photo files</label>
+    <input type="file" name="photos" id="{{ form.photos.id_for_label }}" accept="image/*" multiple required>{{ form.photos.errors }}</div>
+
+  <p class="notice small">Demo only. Enrol your own face, or someone who has agreed. The dummy record is fictional and can be erased from the person page.</p>
+  <button type="submit">Enroll</button>
+</form>
+{% endblock %}

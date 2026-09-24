@@ -1,0 +1,17 @@
+{% extends "web/base.html" %}
+{% load web_extras %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="card login">
+  <img class="login-banner" src="{% banner_url %}" alt="RedQueen">
+  <h1>Sign in</h1>
+  <p class="muted small">Authorised personnel only. Access is logged.</p>
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    <div class="field"><label for="{{ form.username.id_for_label }}">Username</label>{{ form.username }}</div>
+    <div class="field"><label for="{{ form.password.id_for_label }}">Password</label>{{ form.password }}</div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+{% endblock %}

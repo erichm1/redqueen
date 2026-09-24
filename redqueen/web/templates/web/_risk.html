@@ -1,0 +1,32 @@
+{% if not risk %}
+  <p class="muted">Risk assessment does not apply: no conviction or fine on record.</p>
+{% else %}
+  <div class="actions" style="justify-content:space-between">
+    <div><span class="badge {{ risk.level }}">{{ risk.level|upper }} risk</span>
+      <span class="mono">{{ risk.score }}</span></div>
+    <div class="muted small">
+      Trajectory:
+      {% if risk.trajectory == "more_severe" %}<span class="up">▲ more severe</span>
+      {% elif risk.trajectory == "less_severe" %}<span class="down">▼ less severe</span>
+      {% else %}<span>▬ similar</span>{% endif %}
+      · expected next severity {{ risk.expected_severity }}/5
+    </div>
+  </div>
+  <div class="bar {{ risk.level }}" style="margin:.7rem 0 1rem" role="img" aria-label="Risk score {{ risk.score }} of 1"><span style="width: {% widthratio risk.score 1 100 %}%"></span></div>
+  <div class="grid cols-3">
+    {% for v in risk.votes %}
+    <div class="precog">
+      <div class="actions" style="justify-content:space-between"><span class="name">{{ v.precog }}</span><span class="badge {{ v.level }}">{{ v.level }}</span></div>
+      <div class="bar {{ v.level }}" style="margin:.4rem 0"><span style="width: {% widthratio v.score 1 100 %}%"></span></div>
+      <div class="muted small">{{ v.rationale }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if risk.minority_report %}
+    <p class="notice" style="margin-top:1rem"><strong>Minority report.</strong>
+      {% for d in risk.minority_report %}<span class="mono">{{ d.precog }}</span> dissents ({{ d.level }}){% if not forloop.last %}, {% endif %}{% endfor %}
+      from the consensus level. Review its reasoning above.</p>
+  {% endif %}
+  <p class="muted small" style="margin-bottom:0">{{ risk.advisory }}
+    {% if risk.as_of %}Assessed {{ risk.as_of|date:"Y-m-d H:i" }}.{% else %}Computed live, not yet stored.{% endif %}</p>
+{% endif %}

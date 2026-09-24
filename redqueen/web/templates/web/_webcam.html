@@ -1,0 +1,13 @@
+{% load static %}
+<div class="webcam" data-webcam data-input="{{ input_id }}" data-video="{{ allow_video|yesno:'1,0' }}" data-max="{{ max_photos|default:1 }}" data-seconds="5">
+  <video autoplay playsinline muted hidden aria-label="Live camera preview"></video>
+  <p class="muted small" data-status role="status" aria-live="polite">Camera is off. Nothing is captured until you start it.</p>
+  <div class="actions">
+    <button type="button" data-action="start">Start camera</button>
+    <button type="button" data-action="photo" class="secondary" disabled>Take photo</button>
+    {% if allow_video %}<button type="button" data-action="record" class="secondary" disabled>Record 5 s video</button>{% endif %}
+    <button type="button" data-action="stop" class="ghost btn" hidden>Stop camera</button>
+  </div>
+  <div class="shots" data-shots></div>
+</div>
+<script src="{% static 'web/webcam.js' %}" defer></script>

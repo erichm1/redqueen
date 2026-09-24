@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" role="img" aria-label="RedQueen">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="75%">
+      <stop offset="0" stop-color="#5a0f1c"/><stop offset="0.55" stop-color="#1d0a10"/><stop offset="1" stop-color="#0c0c10"/>
+    </radialGradient>
+    <linearGradient id="heart" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff5a70"/><stop offset="1" stop-color="#a3132b"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+    <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#fff" opacity=".04"/></pattern>
+  </defs>
+  <rect width="960" height="300" fill="url(#bg)"/>
+  <g fill="none" stroke="#e5324b" opacity=".35">
+    <circle cx="480" cy="140" r="60"/><circle cx="480" cy="140" r="100" opacity=".7"/>
+    <circle cx="480" cy="140" r="145" opacity=".5"/><circle cx="480" cy="140" r="200" opacity=".3"/>
+    <path d="M0 140H300M660 140H960" stroke-dasharray="2 8"/>
+  </g>
+  <g transform="translate(480 132)">
+    <path d="M0 42C-70 -6 -52 -50 -24 -50C-10 -50 0 -40 0 -30C0 -40 10 -50 24 -50C52 -50 70 -6 0 42Z"
+          fill="#e5324b" filter="url(#glow)" opacity=".8"/>
+    <path d="M0 42C-70 -6 -52 -50 -24 -50C-10 -50 0 -40 0 -30C0 -40 10 -50 24 -50C52 -50 70 -6 0 42Z" fill="url(#heart)"/>
+    <path d="M-34 -58L-24 -84L-12 -66L0 -92L12 -66L24 -84L34 -58Z" fill="#f2c14e" stroke="#0c0c10" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+  <text x="480" y="252" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="700"
+        letter-spacing="14" fill="#ececf1">RED QUEEN</text>
+  <text x="480" y="277" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" letter-spacing="5"
+        fill="#9a9aab">PRECOG INITIATIVE</text>
+  <rect width="960" height="300" fill="url(#scan)"/>
+</svg>

@@ -1,0 +1,100 @@
+{% extends "web/base.html" %}
+{% load web_extras %}
+{% block title %}Profile {{ profile.pk }}{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div><h1>{{ profile.person.full_name }}</h1>
+    <p class="muted" style="margin:0">Profile #{{ profile.pk }} · {% if profile.intake_id %}<a href="{% url 'intake-detail' profile.intake_id %}">intake #{{ profile.intake_id }}</a>{% else %}source media erased{% endif %} ·
+      <a href="{% url 'person-detail' profile.person_id %}">full person record</a></p></div>
+  <span class="badge {{ profile.status }}" style="font-size:.95rem">{{ profile.get_status_display }}</span>
+</div>
+
+<div class="grid cols-2">
+  <section class="card" aria-labelledby="h-val">
+    <h2 id="h-val">Validation</h2>
+    {% if face %}<div style="margin-bottom:1rem">
+      <div class="actions" style="justify-content:space-between"><span class="muted small">Face match vs registered profile</span><span class="pct" style="font-size:1.3rem">{{ face.similarity_pct }}%</span></div>
+      <div class="meter matched" role="img" aria-label="Similarity {{ face.similarity_pct }} percent, threshold {{ profile.intake.threshold_pct }} percent"><span style="width:{{ face.similarity_pct }}%"></span>{% if profile.intake.threshold_pct %}<i class="tick" style="left:{{ profile.intake.threshold_pct }}%"></i>{% endif %}</div>
+      <div class="cand" style="margin-top:.3rem">Accepted at ≥ {{ profile.intake.threshold_pct|default:"?" }}% · face #{{ face.index }} in the media{% if face.support > 1 %} · seen in {{ face.support }} frames{% endif %}
+        {% if candidates|length > 1 %}<br>Other registered people: {% for c in candidates %}{% if c.name != profile.person.full_name %}{{ c.name }} {{ c.pct }}%{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}{% endif %}</div>
+    </div>{% endif %}
+    <ul class="checklist">{% for c in profile.checks %}
+      <li><span class="badge {% if c.passed %}ok{% else %}fail{% endif %}">{% if c.passed %}pass{% else %}fail{% endif %}</span><span><strong>{{ c.name }}</strong> <span class="muted small">{{ c.detail }}</span></span></li>{% endfor %}</ul>
+    {% if profile.reviewed_by %}<p class="muted small">Reviewed by {{ profile.reviewed_by.get_username }} on {{ profile.reviewed_at|date:"Y-m-d H:i" }}{% if profile.review_notes %}: “{{ profile.review_notes }}”{% endif %}</p>{% endif %}
+
+    {% if profile.status == 'needs_review' or profile.status == 'validated' %}
+      {% if can_review %}
+      <form method="post" action="{% url 'profile-review' profile.pk %}" style="margin-top:1rem">{% csrf_token %}
+        <div class="field"><label for="notes">Reviewer notes</label>{{ review_form.notes }}</div>
+        <div class="actions">
+          {% if profile.status == 'needs_review' %}<button name="decision" value="approve" type="submit">Confirm identity &amp; validate</button>{% endif %}
+          <button name="decision" value="reject" type="submit" class="secondary">Reject: wrong person / bad data</button>
+        </div>
+      </form>
+      {% elif profile.status == 'needs_review' %}<p class="notice small" style="margin-top:1rem">A reviewer must confirm this identity before any judgment. You don't have the review permission.</p>{% endif %}
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="h-risk">
+    <h2 id="h-risk">Risk outlook</h2>
+    {% include "web/_risk.html" %}
+  </section>
+</div>
+
+<section class="card" style="margin-top:1rem" aria-labelledby="h-rec">
+  <h2 id="h-rec">Record at time of identification</h2>
+  {% include "web/_records.html" %}
+</section>
+
+<section class="card" style="margin-top:1rem" aria-labelledby="h-judg">
+  <h2 id="h-judg">Conviction &amp; sentence</h2>
+  {% if profile.status != 'validated' %}
+    <p class="muted">{% if profile.status == 'needs_review' %}Validate the profile first.{% elif profile.status == 'rejected' %}Profile was rejected; no judgment can be applied.{% else %}No open infractions remain.{% endif %}</p>
+  {% else %}
+    <p class="notice small">Recommendations follow an illustrative guideline table. They are not decisions: an authorised person applies (or overrides) them.</p>
+    {% for r in recommendations %}
+      <div class="rec">
+        <strong>#{{ r.infraction_id }} {{ r.infraction.category|capfirst }}</strong> <span class="muted">severity {{ r.infraction.severity }}</span><br>
+        Suggested: {% if r.convicted %}<span class="badge high">conviction</span>{% else %}<span class="badge neutral">no conviction</span>{% endif %}
+        {{ r.sentence_kind|unscore }}{% if r.amount %} {{ r.amount }}{% endif %}{% if r.hours %} {{ r.hours }}h{% endif %}{% if r.months %} {{ r.months }} months{% endif %}
+        <div class="muted small">{{ r.rationale }}</div>
+        {% if can_adjudicate %}<button type="button" class="secondary use-rec" style="margin-top:.5rem"
+          data-infraction="{{ r.infraction_id }}" data-convicted="{{ r.convicted|yesno:'1,0' }}" data-kind="{{ r.sentence_kind }}"
+          data-amount="{{ r.amount|default_if_none:'' }}" data-hours="{{ r.hours|default_if_none:'' }}" data-months="{{ r.months|default_if_none:'' }}">Use this in the form</button>{% endif %}
+      </div>
+    {% empty %}<p class="muted">No open infractions to adjudicate.</p>{% endfor %}
+
+    {% if recommendations %}{% if can_adjudicate %}
+    <form method="post" action="{% url 'profile-judgment' profile.pk %}" id="judgment-form" style="margin-top:1rem">{% csrf_token %}
+      {{ judgment_form.non_field_errors }}
+      <div class="grid cols-3">
+        <div class="field"><label for="{{ judgment_form.infraction.id_for_label }}">Infraction</label>{{ judgment_form.infraction }}{{ judgment_form.infraction.errors }}</div>
+        <div class="field"><label for="{{ judgment_form.sentence_kind.id_for_label }}">Sentence</label>{{ judgment_form.sentence_kind }}{{ judgment_form.sentence_kind.errors }}</div>
+        <div class="field"><label>{{ judgment_form.convicted }}Record a conviction</label></div>
+        <div class="field"><label for="{{ judgment_form.amount.id_for_label }}">Fine amount</label>{{ judgment_form.amount }}{{ judgment_form.amount.errors }}</div>
+        <div class="field"><label for="{{ judgment_form.hours.id_for_label }}">Community service hours</label>{{ judgment_form.hours }}{{ judgment_form.hours.errors }}</div>
+        <div class="field"><label for="{{ judgment_form.months.id_for_label }}">Months (probation / prison)</label>{{ judgment_form.months }}{{ judgment_form.months.errors }}</div>
+      </div>
+      <div class="field"><label for="{{ judgment_form.rationale.id_for_label }}">Rationale (kept in the audit trail)</label>{{ judgment_form.rationale }}</div>
+      <button type="submit">Apply judgment</button>
+    </form>
+    <script>
+      document.querySelectorAll('.use-rec').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var f = document.getElementById('judgment-form'), d = b.dataset;
+          f.elements['infraction'].value = d.infraction; f.elements['sentence_kind'].value = d.kind;
+          f.elements['convicted'].checked = d.convicted === '1';
+          f.elements['amount'].value = d.amount; f.elements['hours'].value = d.hours; f.elements['months'].value = d.months;
+          f.scrollIntoView({behavior: 'smooth', block: 'center'});
+        });
+      });
+    </script>
+    {% else %}<p class="notice small">You don't have permission to apply judgments.</p>{% endif %}{% endif %}
+  {% endif %}
+
+  {% if judgments %}<h3 style="margin-top:1.25rem">Applied</h3>
+    <ul class="checklist">{% for j in judgments %}<li><span class="mono">{{ j.decided_at|date:"Y-m-d" }}</span>
+      <span>#{{ j.infraction_id }}: {% if j.convicted %}conviction, {% endif %}{{ j.sentence_kind|unscore }} <span class="muted">by {{ j.decided_by.get_username }}{% if j.rationale %}: {{ j.rationale }}{% endif %}</span></span></li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endblock %}

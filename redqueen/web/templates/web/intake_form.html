@@ -1,0 +1,29 @@
+{% extends "web/base.html" %}
+{% block title %}New intake{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>New intake</h1><p class="muted" style="margin:0">Use your webcam or upload a photo or video. Every face in it is boxed and compared with the registered people; a suspect profile is built for each identified person who has a record. Group photos are fine.</p></div></div>
+<form class="card" method="post" enctype="multipart/form-data" style="max-width:640px">{% csrf_token %}
+  {{ form.non_field_errors }}
+  {% if synthetic %}<p class="notice danger small">Engine is <span class="mono">synthetic</span> (dummy-portrait test double). Webcam faces will not be recognised properly: restart the server without <span class="mono">REDQUEEN_VISION_ENGINE=synthetic</span>.</p>{% endif %}
+  <h3>Webcam</h3>
+  {% include "web/_webcam.html" with input_id=form.media.id_for_label allow_video=True max_photos=1 %}
+  <div class="field"><label for="{{ form.media.id_for_label }}">…or choose a file: photo or video (jpg, png, mp4, avi, mov, webm)</label>
+    <input type="file" name="media" id="{{ form.media.id_for_label }}" accept="image/*,video/*" required>{{ form.media.errors }}</div>
+  <div class="field"><label for="{{ form.precinct.id_for_label }}">Precinct</label>
+    <input type="text" name="precinct" id="{{ form.precinct.id_for_label }}" list="precincts" maxlength="64" value="{{ form.precinct.value|default:'' }}">
+    <datalist id="precincts">{% for p in precincts %}<option value="{{ p }}">{% endfor %}</datalist>{{ form.precinct.errors }}</div>
+  <div id="preview"></div>
+  <p class="notice small">Identification is a statistical match and can be wrong. Nothing here is final: profiles are validated and any judgment is applied by an authorised person.</p>
+  <button type="submit">Run pipeline</button>
+</form>
+<script>
+  document.getElementById('{{ form.media.id_for_label }}').addEventListener('change', function (e) {
+    var box = document.getElementById('preview'); box.textContent = '';
+    var f = e.target.files[0]; if (!f) return;
+    var el = document.createElement(f.type.indexOf('video') === 0 ? 'video' : 'img');
+    el.src = URL.createObjectURL(f); el.className = 'media-preview'; el.style.marginBottom = '1rem';
+    if (el.tagName === 'VIDEO') el.controls = true; else el.alt = 'Preview of the selected upload';
+    box.appendChild(el);
+  });
+</script>
+{% endblock %}
