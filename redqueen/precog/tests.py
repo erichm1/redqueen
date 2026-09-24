@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from redqueen.testing import DummyWorldTestCase
-from registry.models import Person
+from registry.models import Infraction, Person
 
 from . import compstat
 from .risk import assess_person, assess_records, level_for
@@ -43,6 +43,22 @@ class RiskTests(DummyWorldTestCase):
     def test_level_boundaries(self):
         self.assertEqual([level_for(x) for x in (0, 0.329, 0.33, 0.659, 0.66, 1)],
                          ['low', 'low', 'moderate', 'moderate', 'high', 'high'])
+
+
+class DemographicsDoNotAffectRiskTests(DummyWorldTestCase):
+    def test_same_record_different_age_and_gender_gives_the_same_risk(self):
+        john = Person.objects.get(full_name='John Doe')
+        twin = Person.objects.create(full_name='Twin Doe', age_range='60+', gender='other')
+        for infraction in john.infractions.all():
+            copy = Infraction.objects.get(pk=infraction.pk)
+            copy.pk, copy.person = None, twin
+            copy.save()
+            for penalty in infraction.penalties.all():
+                penalty.pk, penalty.infraction = None, copy
+                penalty.save()
+        a, b = assess_person(john, persist=False), assess_person(twin, persist=False)
+        self.assertEqual((a.score, a.level, a.trajectory), (b.score, b.level, b.trajectory))
+        self.assertNotEqual((john.age_range, john.gender), (twin.age_range, twin.gender))
 
 
 class CompstatTests(DummyWorldTestCase):

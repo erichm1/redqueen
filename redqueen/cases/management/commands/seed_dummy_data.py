@@ -1,6 +1,6 @@
 """Populate the database with dummy people, records and probe media. Nobody here is real."""
 import random
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -12,11 +12,11 @@ from vision.dummy import make_portrait, write_group_photo, write_photo, write_vi
 from vision.engines import get_engine
 
 C = Infraction.Category
-PEOPLE = {  # name: (birth year, scenario)
-    'John Doe': (1988, 'escalating'),
-    'Jane Doe': (1991, 'minor'),
-    'Susan Doe': (1985, 'clean'),
-    'Mark Doe': (1979, 'desisting'),
+PEOPLE = {  # name: (birth year, scenario, gender)
+    'John Doe': (1988, 'escalating', 'male'),
+    'Jane Doe': (1991, 'minor', 'female'),
+    'Susan Doe': (1985, 'clean', 'female'),
+    'Mark Doe': (1979, 'desisting', 'male'),
 }
 
 
@@ -38,8 +38,9 @@ class Command(BaseCommand):
         probe_dir = settings.MEDIA_ROOT / 'dummy'
         probe_dir.mkdir(parents=True, exist_ok=True)
 
-        for name, (year, scenario) in PEOPLE.items():
-            person, _ = Person.objects.get_or_create(full_name=name, defaults={'date_of_birth': f'{year}-06-15'})
+        for name, (year, scenario, gender) in PEOPLE.items():
+            person, _ = Person.objects.get_or_create(
+                full_name=name, defaults={'date_of_birth': date(year, 6, 15), 'gender': gender})
             if not person.templates.exists():
                 embedding = engine.embed(make_portrait(name))[0]
                 FaceTemplate.objects.create(person=person, engine=engine.name,

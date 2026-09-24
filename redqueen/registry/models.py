@@ -1,16 +1,44 @@
+import uuid
+
 from django.db import models
+
+from .demographics import AGE_RANGES, age_range_for
 
 
 class Person(models.Model):
+    """A person known to the system.
+
+    Merges the precog project's Person (uuid, age_range, gender, total_occurrences) with
+    redqueen's identity fields. `uuid` is the stable public identifier used by the API.
+    """
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     full_name = models.CharField(max_length=255)
     date_of_birth = models.DateField(null=True, blank=True)
+    age_range = models.CharField(max_length=10, choices=AGE_RANGES, blank=True,
+                                 help_text='Derived from the date of birth when known')
+    gender = models.CharField(max_length=20, blank=True, null=True)
+    total_occurrences = models.PositiveIntegerField(default=0, editable=False,
+                                                    help_text='Number of infractions on record (kept in sync)')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['full_name']
+        indexes = [models.Index(fields=['age_range'])]
 
     def __str__(self):
         return self.full_name
+
+    def save(self, *args, **kwargs):
+        dob = self._meta.get_field('date_of_birth').to_python(self.date_of_birth)  # accepts 'YYYY-MM-DD' too
+        self.date_of_birth = dob
+        if dob:
+            self.age_range = age_range_for(dob)
+        super().save(*args, **kwargs)
+
+    def refresh_total_occurrences(self):
+        self.total_occurrences = self.infractions.count()
+        Person.objects.filter(pk=self.pk).update(total_occurrences=self.total_occurrences)
 
     def has_conviction_or_fine(self):
         """Risk assessment only applies to people with a conviction or a fine on record."""

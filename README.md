@@ -1,6 +1,25 @@
 # redqueen
 component of precog initiative
 
+RedQueen is now the single project: it absorbed the former standalone `precog` Django project
+(`~/projects/precog`, which was a skeleton with one real model). Only this repository needs to be used.
+
+### Where each precog app lives now
+| precog app | In redqueen | Status |
+|---|---|---|
+| `persons` (`Person`: uuid, age_range, gender, total_occurrences) | `registry.Person` (same fields, merged with name/date of birth) | migrated; `/api/persons/{uuid}/`, admin, web pages |
+| `crimes` | `registry.Infraction` + `registry.Penalty` | already implemented |
+| `suspects` | `cases.SuspectProfile` / `cases.FaceMatch` / `cases.Judgment` | already implemented |
+| `locations` | `Infraction.precinct` (used by COMPSTAT hot spots and deployment) | already implemented |
+| `analytics` | `precog.compstat` (the redqueen app named `precog`) | already implemented |
+| `ml` | `precog.risk` (three-precog risk model) | already implemented |
+| `core` | project settings, `redqueen/testing.py`, audit trail (`cases.AuditEvent`) | already implemented |
+
+Precog's `persons.Person` had `age_range` and `gender` only for description. They are kept that way: they are stored,
+shown and filterable, but never used by the risk model (a test enforces this). `total_occurrences` is kept equal to the
+person's number of infractions automatically. The `uuid` is the person's public ID in the API; the numeric id remains
+the internal key.
+
 Photo/video in → face recognition → record lookup → suspect profile → validation →
 conviction (optional) / sentence → forward-looking risk, reported COMPSTAT-style.
 All included data is dummy data (John, Jane, Susan and Mark Doe).

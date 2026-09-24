@@ -2,7 +2,18 @@ from rest_framework import serializers
 
 from cases.models import FaceMatch, Intake, Judgment, SuspectProfile
 from precog.models import RiskAssessment
-from registry.models import Infraction, Penalty
+from registry.models import Infraction, Penalty, Person
+
+
+class PersonSerializer(serializers.ModelSerializer):
+    """`id` is the person's public UUID. age_range is derived from date_of_birth when that is set."""
+
+    id = serializers.UUIDField(source='uuid', read_only=True)
+
+    class Meta:
+        model = Person
+        fields = ['id', 'full_name', 'date_of_birth', 'age_range', 'gender', 'total_occurrences', 'created_at']
+        read_only_fields = ['total_occurrences', 'created_at']
 
 
 class ProfileSerializer(serializers.ModelSerializer):

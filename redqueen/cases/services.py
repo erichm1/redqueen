@@ -218,7 +218,7 @@ class EnrollmentError(Exception):
 
 
 @transaction.atomic
-def enroll_person(actor, full_name, date_of_birth, photos, scenario):
+def enroll_person(actor, full_name, date_of_birth, photos, scenario, gender=None):
     """Create a person from face photos (raw bytes) and give them a dummy record scenario.
 
     Only embeddings are stored, never the photos. Every photo must contain exactly one face, and
@@ -243,7 +243,7 @@ def enroll_person(actor, full_name, date_of_birth, photos, scenario):
         name = Person.objects.get(pk=existing[0]).full_name
         raise EnrollmentError(f'This face is already enrolled as {name} ({max(existing[1], 0) * 100:.0f}% similar).')
 
-    person = Person.objects.create(full_name=full_name, date_of_birth=date_of_birth)
+    person = Person.objects.create(full_name=full_name, date_of_birth=date_of_birth, gender=gender or None)
     FaceTemplate.objects.bulk_create([
         FaceTemplate(person=person, engine=engine.name, embedding=e.tolist(), source='webcam-enrolment')
         for e in embeddings

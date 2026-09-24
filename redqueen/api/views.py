@@ -82,20 +82,52 @@ class ProfileViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializers.JudgmentSerializer(judgment).data, status=status.HTTP_201_CREATED)
 
 
+def risk_response(person, refresh=False):
+    if not person.has_conviction_or_fine():
+        return Response({'detail': 'No conviction or fine on record; risk assessment not applicable.'},
+                        status=status.HTTP_404_NOT_FOUND)
+    assessment = None if refresh else person.risk_assessments.first()
+    assessment = assessment or assess_person(person)
+    return Response(serializers.RiskSerializer(assessment).data)
+
+
+class PersonViewSet(viewsets.ModelViewSet):
+    """People known to the system, addressed by UUID. Reading needs a login; writing needs the
+    matching Django model permission. Deleting erases the person's face data and the media showing them."""
+
+    queryset = Person.objects.all()
+    serializer_class = serializers.PersonSerializer
+    lookup_field = 'uuid'
+    permission_classes = [permissions.DjangoModelPermissions]
+
+    def get_queryset(self):
+        people = super().get_queryset()
+        query = self.request.query_params.get('q')
+        if query:
+            people = people.filter(full_name__icontains=query)
+        age_range = self.request.query_params.get('age_range')
+        if age_range:
+            people = people.filter(age_range=age_range)
+        return people
+
+    def perform_destroy(self, person):
+        services.delete_person(self.request.user, person)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def risk(self, request, uuid=None):
+        """Latest risk assessment (?refresh=1 recomputes it)."""
+        return risk_response(self.get_object(), refresh=bool(request.query_params.get('refresh')))
+
+
 class PersonRiskView(APIView):
-    """Latest risk assessment for a person (?refresh=1 recomputes it)."""
+    """Latest risk assessment by numeric id (kept for compatibility; prefer /persons/{uuid}/risk/)."""
 
     def get(self, request, person_id):
         try:
             person = Person.objects.get(pk=person_id)
         except Person.DoesNotExist:
             raise NotFound('Unknown person')
-        if not person.has_conviction_or_fine():
-            return Response({'detail': 'No conviction or fine on record; risk assessment not applicable.'},
-                            status=status.HTTP_404_NOT_FOUND)
-        assessment = None if request.query_params.get('refresh') else person.risk_assessments.first()
-        assessment = assessment or assess_person(person)
-        return Response(serializers.RiskSerializer(assessment).data)
+        return risk_response(person, refresh=bool(request.query_params.get('refresh')))
 
 
 class CompstatView(APIView):

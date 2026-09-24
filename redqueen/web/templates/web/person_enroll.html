@@ -8,7 +8,8 @@
   {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
   <div class="grid cols-2">
     <div class="field"><label for="{{ form.full_name.id_for_label }}">Name (use a dummy name)</label>{{ form.full_name }}{{ form.full_name.errors }}</div>
-    <div class="field"><label for="{{ form.date_of_birth.id_for_label }}">Date of birth (optional)</label>{{ form.date_of_birth }}{{ form.date_of_birth.errors }}</div>
+    <div class="field"><label for="{{ form.date_of_birth.id_for_label }}">Date of birth (optional; sets the age range)</label>{{ form.date_of_birth }}{{ form.date_of_birth.errors }}</div>
+    <div class="field"><label for="{{ form.gender.id_for_label }}">Gender (optional, descriptive only)</label>{{ form.gender }}{{ form.gender.errors }}</div>
   </div>
   <div class="field"><label for="{{ form.scenario.id_for_label }}">{{ form.scenario.label }}</label>{{ form.scenario }}{{ form.scenario.errors }}</div>
 

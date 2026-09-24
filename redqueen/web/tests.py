@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 import cv2
@@ -9,6 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from cases.models import Intake, SuspectProfile
 from redqueen.testing import DummyWorldTestCase
 from cases.models import Intake
+from registry.demographics import age_range_for
 from registry.models import FaceTemplate, Infraction, Person
 from vision.dummy import make_portrait
 
@@ -61,6 +63,19 @@ class WebTests(DummyWorldTestCase):
         self.assertContains(page, 'more severe')
         self.assertContains(self.client.get('/people/?q=jane'), 'Jane Doe')
         self.assertNotContains(self.client.get('/people/?q=jane'), 'John Doe')
+
+    def test_people_pages_show_the_merged_person_fields(self):
+        self.client.force_login(self.officer)
+        listing = self.client.get('/people/?q=john')
+        self.assertContains(listing, age_range_for(date(1988, 6, 15)))
+        self.assertContains(listing, 'male')
+        self.assertContains(listing, 'Occurrences')
+        john = Person.objects.get(full_name='John Doe')
+        page = self.client.get(f'/people/{john.pk}/')
+        self.assertContains(page, str(john.uuid))
+        self.assertContains(page, f'age range {age_range_for(date(1988, 6, 15))}')
+        self.assertContains(page, '4 occurrences')
+        self.assertContains(page, 'never used in the risk outlook')
 
     def test_susan_has_no_risk_panel(self):
         self.client.force_login(self.officer)
@@ -209,8 +224,10 @@ class WebcamEnrolmentTests(DummyWorldTestCase):
 
     def test_enrol_then_recognise_the_new_person_end_to_end(self):
         self.client.force_login(self.judge)
-        response = self.enroll([png('Webcam Doe', 1), png('Webcam Doe', 2)])
+        response = self.enroll([png('Webcam Doe', 1), png('Webcam Doe', 2)], gender='non-binary',
+                               date_of_birth='2001-02-03')
         person = Person.objects.get(full_name='Webcam Doe')
+        self.assertEqual((person.gender, person.age_range, person.total_occurrences), ('non-binary', age_range_for(date(2001, 2, 3)), 4))
         self.assertRedirects(response, f'/people/{person.pk}/')
         self.assertEqual(FaceTemplate.objects.filter(person=person, source='webcam-enrolment').count(), 2)
         self.assertEqual(person.infractions.count(), 4)  # escalating scenario

@@ -272,7 +272,7 @@ def person_enroll(request):
         try:
             person = services.enroll_person(
                 request.user, data['full_name'], data['date_of_birth'],
-                [p.read() for p in data['photos']], data['scenario'])
+                [p.read() for p in data['photos']], data['scenario'], data['gender'])
         except services.EnrollmentError as exc:
             form.add_error(None, str(exc))
         except EngineError as exc:

@@ -4,6 +4,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from redqueen.testing import DummyWorldTestCase
+from datetime import date
+
+from registry.demographics import age_range_for
 from registry.models import Person
 
 
@@ -16,7 +19,8 @@ class ApiTests(DummyWorldTestCase):
         User = get_user_model()
         cls.officer = User.objects.create_user('officer')
         cls.judge = User.objects.create_user('judge')
-        cls.judge.user_permissions.add(*Permission.objects.filter(codename__in=['review_profile', 'adjudicate']))
+        cls.judge.user_permissions.add(*Permission.objects.filter(
+            codename__in=['review_profile', 'adjudicate', 'add_person', 'change_person', 'delete_person']))
 
     def client_for(self, user=None):
         client = APIClient()
@@ -119,3 +123,62 @@ class ApiTests(DummyWorldTestCase):
 
     def test_swagger_schema_renders(self):
         self.assertEqual(self.client_for(self.officer).get('/swagger/?format=openapi').status_code, 200)
+
+
+    # ---- persons (the merged precog Person entity)
+
+    def test_persons_need_a_login(self):
+        self.assertEqual(self.client_for().get('/api/persons/').status_code, 403)
+
+    def test_person_is_addressed_by_uuid_and_carries_the_precog_fields(self):
+        john = Person.objects.get(full_name='John Doe')
+        client = self.client_for(self.officer)
+        data = client.get(f'/api/persons/{john.uuid}/').data
+        self.assertEqual(data['id'], str(john.uuid))
+        self.assertEqual((data['full_name'], data['age_range'], data['gender'], data['total_occurrences']),
+                         ('John Doe', age_range_for(date(1988, 6, 15)), 'male', 4))
+        self.assertNotIn('uuid', data)
+        self.assertEqual(client.get('/api/persons/not-a-uuid/').status_code, 404)
+
+    def test_person_list_search_and_age_filter(self):
+        client = self.client_for(self.officer)
+        names = lambda r: {p['full_name'] for p in r.data['results']} if 'results' in r.data else {p['full_name'] for p in r.data}
+        self.assertEqual(names(client.get('/api/persons/?q=jane')), {'Jane Doe'})
+        john_bucket = age_range_for(date(1988, 6, 15))
+        self.assertIn('John Doe', names(client.get(f'/api/persons/?age_range={john_bucket}')))
+        self.assertNotIn('Jane Doe' if age_range_for(date(1991, 6, 15)) != john_bucket else 'Nobody',
+                         names(client.get(f'/api/persons/?age_range={john_bucket}')))
+        self.assertEqual(names(client.get('/api/persons/?age_range=0-17')), set())
+
+    def test_creating_and_editing_people_needs_model_permissions(self):
+        payload = {'full_name': 'Nina Doe', 'date_of_birth': '2010-03-03', 'gender': 'female'}
+        self.assertEqual(self.client_for(self.officer).post('/api/persons/', payload, format='json').status_code, 403)
+        created = self.client_for(self.judge).post('/api/persons/', payload, format='json')
+        self.assertEqual(created.status_code, 201, created.content)
+        self.assertEqual((created.data['age_range'], created.data['total_occurrences']), ('0-17', 0))
+        url = f'/api/persons/{created.data["id"]}/'
+        self.assertEqual(self.client_for(self.officer).patch(url, {'gender': 'x'}, format='json').status_code, 403)
+        patched = self.client_for(self.judge).patch(url, {'date_of_birth': '1950-01-01'}, format='json')
+        self.assertEqual(patched.data['age_range'], '60+')  # re-derived from the new date of birth
+        # server-managed fields cannot be forged
+        forged = self.client_for(self.judge).patch(url, {'total_occurrences': 99}, format='json')
+        self.assertEqual(forged.data['total_occurrences'], 0)
+
+    def test_deleting_a_person_through_the_api_erases_their_media_too(self):
+        client = self.client_for(self.judge)
+        intake = self.upload(client, 'john.png').data
+        john = Person.objects.get(full_name='John Doe')
+        self.assertEqual(self.client_for(self.officer).delete(f'/api/persons/{john.uuid}/').status_code, 403)
+        self.assertEqual(client.delete(f'/api/persons/{john.uuid}/').status_code, 204)
+        self.assertFalse(Person.objects.filter(pk=john.pk).exists())
+        self.assertEqual(client.get(f'/api/intakes/{intake["id"]}/').status_code, 404)
+
+    def test_risk_is_reachable_by_uuid_and_by_numeric_id(self):
+        john = Person.objects.get(full_name='John Doe')
+        client = self.client_for(self.officer)
+        by_uuid = client.get(f'/api/persons/{john.uuid}/risk/')
+        by_id = client.get(f'/api/persons/{john.pk}/risk/')
+        self.assertEqual((by_uuid.status_code, by_id.status_code), (200, 200))
+        self.assertEqual(by_uuid.data['level'], by_id.data['level'])
+        susan = Person.objects.get(full_name='Susan Doe')
+        self.assertEqual(client.get(f'/api/persons/{susan.uuid}/risk/').status_code, 404)

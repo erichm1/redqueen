@@ -60,6 +60,7 @@ class EnrollForm(forms.Form):
 
     full_name = forms.CharField(max_length=255)
     date_of_birth = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    gender = forms.CharField(max_length=20, required=False)
     scenario = forms.ChoiceField(choices=[(k, label) for k, (label, _) in SCENARIOS.items()],
                                  label='Dummy record to attach', initial='escalating')
     photos = MultipleFileField(label='Face photos')

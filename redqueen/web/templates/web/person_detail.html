@@ -2,7 +2,8 @@
 {% block title %}{{ person.full_name }}{% endblock %}
 {% block content %}
 <div class="pagehead"><div><h1>{{ person.full_name }}</h1>
-  <p class="muted" style="margin:0">Born {{ person.date_of_birth|default:"unknown" }} · {{ templates_count }} enrolled face template{{ templates_count|pluralize }}</p></div>
+  <p class="muted" style="margin:0">Born {{ person.date_of_birth|default:"unknown" }} · age range {{ person.age_range|default:"unknown" }} · gender {{ person.gender|default:"not recorded" }} · {{ person.total_occurrences }} occurrence{{ person.total_occurrences|pluralize }} · {{ templates_count }} enrolled face template{{ templates_count|pluralize }}</p>
+  <p class="muted small" style="margin:.2rem 0 0">ID <span class="mono">{{ person.uuid }}</span> · age range and gender are descriptive only and are never used in the risk outlook.</p></div>
   {% if can_delete %}<form method="post" action="{% url 'person-delete' person.pk %}" onsubmit="return confirm('Erase this person, their face data and records, and every intake whose photo or video shows them (including group photos)?');">{% csrf_token %}<button class="secondary" type="submit">Erase person &amp; face data</button></form>{% endif %}</div>
 <section class="card" aria-labelledby="h-risk"><h2 id="h-risk">Risk outlook</h2>{% include "web/_risk.html" %}</section>
 <section class="card" style="margin-top:1rem" aria-labelledby="h-rec"><h2 id="h-rec">Record</h2>{% include "web/_records.html" %}</section>

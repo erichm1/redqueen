@@ -39,6 +39,10 @@ class Intake(models.Model):
     def threshold_pct(self):
         return round(self.match_threshold * 100, 1) if self.match_threshold is not None else None
 
+    def __str__(self):
+        return f'Intake #{self.pk} ({self.media_type}, {self.status})'
+
+
 
 class FaceMatch(models.Model):
     """One face found in an intake and what it was compared with."""
@@ -85,6 +89,11 @@ class FaceMatch(models.Model):
     def box(self):
         return None if self.box_x is None else (self.box_x, self.box_y, self.box_w, self.box_h)
 
+    def __str__(self):
+        who = self.person or 'unknown'
+        return f'Intake #{self.intake_id} face #{self.index}: {who} ({self.similarity_pct}%)'
+
+
 
 class SuspectProfile(models.Model):
     class Status(models.TextChoices):
@@ -110,6 +119,10 @@ class SuspectProfile(models.Model):
         ordering = ['-created_at']
         constraints = [models.UniqueConstraint(fields=['intake', 'person'], name='one_profile_per_person_per_intake')]
 
+    def __str__(self):
+        return f'Profile #{self.pk}: {self.person} ({self.status})'
+
+
 
 class Judgment(models.Model):
     """Outcome applied to one open infraction: an (optional) conviction and/or a sentence."""
@@ -131,6 +144,10 @@ class Judgment(models.Model):
             ('adjudicate', 'Can apply convictions and sentences'),
         ]
 
+    def __str__(self):
+        return f'Judgment #{self.pk}: {self.infraction} -> {self.sentence_kind}'
+
+
 
 class AuditEvent(models.Model):
     """Append-only trail of every identification, review and judgment."""
@@ -145,3 +162,6 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.created_at:%Y-%m-%d %H:%M} {self.action} {self.target}'
