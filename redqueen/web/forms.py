@@ -1,7 +1,12 @@
+from datetime import timedelta
+
 from django import forms
+from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from cases.models import Intake
 from registry.demo import SCENARIOS
+from registry.demographics import AGE_RANGES
 from registry.models import Infraction, Penalty
 
 MAX_UPLOAD_MB = 100
@@ -9,13 +14,36 @@ MAX_UPLOAD_MB = 100
 
 class IntakeForm(forms.Form):
     media = forms.FileField(label='Photo or video')
+    captured_at = forms.DateTimeField(
+        required=False, label='Captured on',
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+        help_text='When the photo or video was taken. Leave blank for now.')
     precinct = forms.CharField(max_length=64, required=False)
+    location = forms.CharField(max_length=255, required=False, label='Place / address')
+    latitude = forms.FloatField(required=False, min_value=-90, max_value=90)
+    longitude = forms.FloatField(required=False, min_value=-180, max_value=180)
 
     def clean_media(self):
         media = self.cleaned_data['media']
         if media.size > MAX_UPLOAD_MB * 1024 * 1024:
             raise forms.ValidationError(f'File is larger than {MAX_UPLOAD_MB} MB.')
         return media
+
+    def clean_captured_at(self):
+        captured = self.cleaned_data['captured_at']
+        now = timezone.now()
+        if captured is None:
+            return now
+        if captured > now + timedelta(minutes=5):
+            raise forms.ValidationError('The capture time cannot be in the future.')
+        return captured
+
+    def clean(self):
+        data = super().clean()
+        if (data.get('latitude') is None) != (data.get('longitude') is None):
+            self.add_error('longitude' if data.get('latitude') is not None else 'latitude',
+                           'Give both latitude and longitude, or neither.')
+        return data
 
 
 class ReviewForm(forms.Form):
@@ -60,6 +88,8 @@ class EnrollForm(forms.Form):
 
     full_name = forms.CharField(max_length=255)
     date_of_birth = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    age_range = forms.ChoiceField(required=False, choices=[('', 'Unknown')] + AGE_RANGES,
+                                  help_text='Derived from the date of birth when one is given')
     gender = forms.CharField(max_length=20, required=False)
     scenario = forms.ChoiceField(choices=[(k, label) for k, (label, _) in SCENARIOS.items()],
                                  label='Dummy record to attach', initial='escalating')
@@ -72,3 +102,12 @@ class EnrollForm(forms.Form):
         if any(p.size > 10 * 1024 * 1024 for p in photos):
             raise forms.ValidationError('Each photo must be under 10 MB.')
         return photos
+
+
+class ProfileForm(forms.ModelForm):
+    """What a user may change about themselves. Access (active/staff/superuser, groups, permissions)
+    is deliberately not here: it is granted by an administrator, never self-served."""
+
+    class Meta:
+        model = get_user_model()
+        fields = ['first_name', 'last_name', 'email']

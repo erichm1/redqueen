@@ -25,10 +25,13 @@ def require(perm):
 
 
 class IntakeViewSet(viewsets.ModelViewSet):
-    """Submit a photo or video (POST multipart: media, precinct). Every face is identified; each identified
+    """Submit a photo or video (POST multipart: media, captured_at, precinct, location, latitude, longitude).
+    Every face is identified; each identified
     person with a record gets a suspect profile. The pipeline runs immediately."""
 
-    queryset = Intake.objects.prefetch_related('faces__person', 'profiles__person', 'profiles__face_match')
+    queryset = Intake.objects.prefetch_related(
+        'faces__person', 'profiles__person', 'profiles__face_match',
+        'related_occurrences__person', 'related_occurrences__penalties')
     serializer_class = serializers.IntakeSerializer
     parser_classes = [MultiPartParser, FormParser]
     http_method_names = ['get', 'post', 'head', 'options']

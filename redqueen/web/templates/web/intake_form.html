@@ -1,4 +1,5 @@
 {% extends "web/base.html" %}
+{% load tz %}
 {% block title %}New intake{% endblock %}
 {% block content %}
 <div class="pagehead"><div><h1>New intake</h1><p class="muted" style="margin:0">Use your webcam or upload a photo or video. Every face in it is boxed and compared with the registered people; a suspect profile is built for each identified person who has a record. Group photos are fine.</p></div></div>
@@ -9,9 +10,23 @@
   {% include "web/_webcam.html" with input_id=form.media.id_for_label allow_video=True max_photos=1 %}
   <div class="field"><label for="{{ form.media.id_for_label }}">…or choose a file: photo or video (jpg, png, mp4, avi, mov, webm)</label>
     <input type="file" name="media" id="{{ form.media.id_for_label }}" accept="image/*,video/*" required>{{ form.media.errors }}</div>
-  <div class="field"><label for="{{ form.precinct.id_for_label }}">Precinct</label>
-    <input type="text" name="precinct" id="{{ form.precinct.id_for_label }}" list="precincts" maxlength="64" value="{{ form.precinct.value|default:'' }}">
-    <datalist id="precincts">{% for p in precincts %}<option value="{{ p }}">{% endfor %}</datalist>{{ form.precinct.errors }}</div>
+  <h3>Incident details</h3>
+  <div class="field"><label for="{{ form.captured_at.id_for_label }}">{{ form.captured_at.label }} <span class="muted">({% get_current_timezone as TZ %}{{ TZ }} time)</span></label>{{ form.captured_at }}{{ form.captured_at.errors }}
+    <span class="muted small">{{ form.captured_at.help_text }}</span></div>
+  <div class="grid cols-2" style="gap:.9rem">
+    <div class="field"><label for="{{ form.precinct.id_for_label }}">Precinct</label>
+      <input type="text" name="precinct" id="{{ form.precinct.id_for_label }}" list="precincts" maxlength="64" value="{{ form.precinct.value|default:'' }}">
+      <datalist id="precincts">{% for p in precincts %}<option value="{{ p }}">{% endfor %}</datalist>{{ form.precinct.errors }}</div>
+    <div class="field"><label for="{{ form.location.id_for_label }}">{{ form.location.label }}</label>
+      <input type="text" name="location" id="{{ form.location.id_for_label }}" list="places" maxlength="255" value="{{ form.location.value|default:'' }}">
+      <datalist id="places">{% for p in places %}<option value="{{ p }}">{% endfor %}</datalist>{{ form.location.errors }}</div>
+  </div>
+  <div class="grid cols-3" style="gap:.9rem;align-items:end">
+    <div class="field"><label for="{{ form.latitude.id_for_label }}">Latitude</label><input type="number" step="any" min="-90" max="90" name="latitude" id="{{ form.latitude.id_for_label }}" value="{{ form.latitude.value|default_if_none:'' }}">{{ form.latitude.errors }}</div>
+    <div class="field"><label for="{{ form.longitude.id_for_label }}">Longitude</label><input type="number" step="any" min="-180" max="180" name="longitude" id="{{ form.longitude.id_for_label }}" value="{{ form.longitude.value|default_if_none:'' }}">{{ form.longitude.errors }}</div>
+    <div class="field"><button type="button" class="secondary" id="use-location">Use my current location</button></div>
+  </div>
+  <p class="muted small" id="geo-status" role="status"></p>
   <div id="preview"></div>
   <p class="notice small">Identification is a statistical match and can be wrong. Nothing here is final: profiles are validated and any judgment is applied by an authorised person.</p>
   <button type="submit">Run pipeline</button>
@@ -24,6 +39,16 @@
     el.src = URL.createObjectURL(f); el.className = 'media-preview'; el.style.marginBottom = '1rem';
     if (el.tagName === 'VIDEO') el.controls = true; else el.alt = 'Preview of the selected upload';
     box.appendChild(el);
+  });
+  document.getElementById('use-location').addEventListener('click', function () {
+    var status = document.getElementById('geo-status');
+    if (!navigator.geolocation) { status.textContent = 'This browser cannot share a location.'; return; }
+    status.textContent = 'Locating…';
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      document.getElementById('{{ form.latitude.id_for_label }}').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('{{ form.longitude.id_for_label }}').value = pos.coords.longitude.toFixed(6);
+      status.textContent = 'Location filled in (accuracy about ' + Math.round(pos.coords.accuracy) + ' m).';
+    }, function (err) { status.textContent = 'Could not get the location: ' + err.message; });
   });
 </script>
 {% endblock %}

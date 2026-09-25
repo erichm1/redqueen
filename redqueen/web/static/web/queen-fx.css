@@ -1,0 +1,37 @@
+.fx-torso, .fx-head { animation: q-bob 1s ease-in-out infinite; }
+.fx-head { animation-delay: .06s; }
+.fx-legs { transform-origin: 120px 310px; animation: q-squash 1s ease-in-out infinite; }
+.fx-shadow { transform-origin: 120px 311px; animation: q-shadow 1s ease-in-out infinite; }
+.arm-rear { transform-origin: 92px 122px; animation: q-rear-idle 1s ease-in-out infinite; }
+.fore-rear { transform-origin: 70px 152px; animation: q-fore-idle 1s ease-in-out infinite; }
+.arm-lead { transform-origin: 148px 122px; animation: q-lead-idle 1s ease-in-out infinite .1s; }
+.fore-lead { transform-origin: 172px 148px; animation: q-fore-idle 1s ease-in-out infinite .1s; }
+.skirt-front { transform-origin: 120px 176px; animation: q-skirt 1s ease-in-out infinite; }
+.fx-train { transform-origin: 120px 176px; animation: q-train 1.4s ease-in-out infinite; }
+.fx-tail { transform-origin: 124px 192px; animation: q-tail 1.6s ease-in-out infinite; }
+.hair-back { transform-origin: 120px 30px; animation: q-hair 2s ease-in-out infinite; }
+.wing { transform-origin: 98px 128px; animation: q-flap 2.4s ease-in-out infinite; }
+.fx-glow { animation: q-glow 1.2s ease-in-out infinite; }
+/* eyelids: shut only when the page marks the stage .eyes-closed (see style.css) */
+.fx-lid { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(0); transition: transform .22s ease-in-out; }
+.fx-circle { animation: q-circle 3s linear infinite; }
+.fx-rq-r { opacity: 0; animation: q-rq-r 3s linear infinite; }
+.fx-rq-q { opacity: 0; animation: q-rq-q 3s linear infinite; }
+.fx-staff { transform-origin: 157px 103px; animation: q-staff 3s ease-in-out infinite; }
+@keyframes q-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 3px; } }
+@keyframes q-squash { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.976); } }
+@keyframes q-shadow { 0%, 100% { transform: scaleX(1); opacity: .55; } 50% { transform: scaleX(1.05); opacity: .65; } }
+@keyframes q-rear-idle { 0%, 100% { rotate: 0deg; } 50% { rotate: 3deg; } }
+@keyframes q-lead-idle { 0%, 100% { rotate: 0deg; } 50% { rotate: -3deg; } }
+@keyframes q-fore-idle { 0%, 100% { rotate: 0deg; } 50% { rotate: 4deg; } }
+@keyframes q-skirt { 0%, 100% { rotate: 0deg; } 50% { rotate: 2.2deg; } }
+@keyframes q-train { 0%, 100% { rotate: -1.6deg; } 50% { rotate: 1.6deg; } }
+@keyframes q-tail { 0%, 100% { rotate: -8deg; } 50% { rotate: 8deg; } }
+@keyframes q-hair { 0%, 100% { rotate: -1.2deg; } 50% { rotate: 1.2deg; } }
+@keyframes q-flap { 0%, 100% { rotate: 0deg; } 50% { rotate: -7deg; } }
+@keyframes q-circle { to { stroke-dashoffset: -100; } }
+@keyframes q-rq-r { 0%, 25% { opacity: 0; } 38%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes q-rq-q { 0%, 60% { opacity: 0; } 72%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes q-staff { 0%, 100% { rotate: -3deg; } 50% { rotate: 3deg; } }
+@keyframes q-glow { 0%, 100% { opacity: .3; } 50% { opacity: .62; } }
+@media (prefers-reduced-motion: reduce) { svg.layer * { animation: none !important; } }

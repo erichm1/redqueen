@@ -29,12 +29,16 @@ def load_gallery(engine):
                     for t in FaceTemplate.objects.filter(engine=engine.name)])
 
 
-def embed_image_bytes(data, engine=None):
-    """Embeddings for an in-memory encoded image (e.g. an upload), without touching disk."""
+def detect_image_bytes(data, engine=None):
+    """(image, faces) for an in-memory encoded image (e.g. an upload), without touching disk."""
     image = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if image is None:
         raise MediaError('Could not decode image')
-    return (engine or get_engine()).embed(image)
+    return image, (engine or get_engine()).detect(image)
+
+
+def embed_image_bytes(data, engine=None):
+    return [face.embedding for face in detect_image_bytes(data, engine)[1]]
 
 
 def existing_identity(embeddings, engine):

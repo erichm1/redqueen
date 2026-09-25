@@ -14,10 +14,10 @@ from django.utils import timezone
 from precog.risk import assess_person
 from registry.demo import SCENARIOS, create_records
 from registry.models import FaceTemplate, Infraction, Penalty, Person
-from vision.annotate import draw, encode_jpeg
+from vision.annotate import crop_face, draw, encode_jpeg
 from vision.engines import get_engine
 from vision.media import MediaError, infer_media_type
-from vision.service import embed_image_bytes, existing_identity, recognize
+from vision.service import detect_image_bytes, existing_identity, recognize
 
 from .models import AuditEvent, FaceMatch, Intake, Judgment, SuspectProfile
 from .sentencing import recommend
@@ -42,8 +42,9 @@ def record_snapshot(person: Person) -> dict:
                 'id': i.pk,
                 'category': i.category,
                 'severity': i.severity,
-                'occurred_at': i.occurred_at.isoformat(),
+                'occurred_at': timezone.localtime(i.occurred_at).isoformat(),
                 'precinct': i.precinct,
+                'location': i.location,
                 'convicted': i.convicted,
                 'status': i.status,
                 'penalties': [
@@ -146,6 +147,9 @@ def process_intake(intake: Intake) -> Intake:
         audit(None, 'profile.created', f'profile:{profile.pk}', status=profile.status, intake=intake.pk)
         profiles += 1
 
+    # every occurrence on record for the people identified here belongs to this intake's record
+    intake.related_occurrences.set(Infraction.objects.filter(person_id__in=list(by_person)))
+
     if not faces and not recognition.faces_detected:
         intake.status = Intake.Status.NO_FACE
     elif profiles:
@@ -158,7 +162,9 @@ def process_intake(intake: Intake) -> Intake:
         intake.status = Intake.Status.NO_MATCH
     intake.save()
     audit(intake.submitted_by, 'intake.processed', f'intake:{intake.pk}', status=intake.status,
-          faces=recognition.faces_detected, identified=len(by_person), profiles=profiles)
+          faces=recognition.faces_detected, identified=len(by_person), profiles=profiles,
+          occurrences=intake.related_occurrences.count(), captured_at=timezone.localtime(intake.captured_at).isoformat(),
+          precinct=intake.precinct, location=intake.location)
     return intake
 
 
@@ -218,38 +224,45 @@ class EnrollmentError(Exception):
 
 
 @transaction.atomic
-def enroll_person(actor, full_name, date_of_birth, photos, scenario, gender=None):
+def enroll_person(actor, full_name, date_of_birth, photos, scenario, gender=None, age_range=''):
     """Create a person from face photos (raw bytes) and give them a dummy record scenario.
 
-    Only embeddings are stored, never the photos. Every photo must contain exactly one face, and
-    the face must not already belong to someone enrolled (that would make matches ambiguous).
+    Each photo must contain exactly one face, and the face must not already belong to someone
+    enrolled (that would make matches ambiguous). The face embedding is stored; unless
+    REDQUEEN['STORE_ENROLMENT_PHOTOS'] is off, so is a cropped image of the face (never the full photo).
     """
     if scenario not in SCENARIOS:
         raise EnrollmentError(f'Unknown scenario {scenario!r}')
     engine = get_engine()
-    embeddings = []
+    embeddings, crops = [], []
     for n, data in enumerate(photos, start=1):
         try:
-            faces = embed_image_bytes(data, engine)
+            image, faces = detect_image_bytes(data, engine)
         except MediaError as exc:
             raise EnrollmentError(f'Photo {n}: {exc}') from exc
         if len(faces) != 1:
             raise EnrollmentError(f'Photo {n}: found {len(faces)} faces, need exactly 1. '
                                   'Face the camera in good light, alone in the frame.')
-        embeddings.append(faces[0])
+        embeddings.append(faces[0].embedding)
+        crops.append(encode_jpeg(crop_face(image, faces[0].box)))
 
     existing = existing_identity(embeddings, engine)
     if existing:
         name = Person.objects.get(pk=existing[0]).full_name
         raise EnrollmentError(f'This face is already enrolled as {name} ({max(existing[1], 0) * 100:.0f}% similar).')
 
-    person = Person.objects.create(full_name=full_name, date_of_birth=date_of_birth, gender=gender or None)
-    FaceTemplate.objects.bulk_create([
-        FaceTemplate(person=person, engine=engine.name, embedding=e.tolist(), source='webcam-enrolment')
-        for e in embeddings
-    ])
+    person = Person.objects.create(full_name=full_name, date_of_birth=date_of_birth, gender=gender or None,
+                                   age_range=age_range or '')  # a date of birth overrides it on save
+    store_photos = settings.REDQUEEN['STORE_ENROLMENT_PHOTOS']
+    for n, (embedding, crop) in enumerate(zip(embeddings, crops), start=1):
+        template = FaceTemplate(person=person, engine=engine.name, embedding=embedding.tolist(),
+                                source='webcam-enrolment')
+        if store_photos:
+            template.photo.save(f'{person.uuid}-{n}.jpg', ContentFile(crop), save=False)
+        template.save()
     create_records(person, scenario)
-    audit(actor, 'person.enrolled', f'person:{person.pk}', scenario=scenario, photos=len(embeddings))
+    audit(actor, 'person.enrolled', f'person:{person.pk}', scenario=scenario, templates=len(embeddings),
+          photos_stored=store_photos)
     return person
 
 

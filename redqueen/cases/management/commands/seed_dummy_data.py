@@ -3,11 +3,13 @@ import random
 from datetime import date, timedelta
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from registry.demo import PRECINCTS, create_records
+from registry.demo import PRECINCTS, create_records, place_for
 from registry.models import FaceTemplate, Infraction, Person
+from vision.annotate import encode_jpeg
 from vision.dummy import make_portrait, write_group_photo, write_photo, write_video
 from vision.engines import get_engine
 
@@ -41,10 +43,13 @@ class Command(BaseCommand):
         for name, (year, scenario, gender) in PEOPLE.items():
             person, _ = Person.objects.get_or_create(
                 full_name=name, defaults={'date_of_birth': date(year, 6, 15), 'gender': gender})
+            portrait = make_portrait(name)
             if not person.templates.exists():
-                embedding = engine.embed(make_portrait(name))[0]
+                embedding = engine.embed(portrait)[0]
                 FaceTemplate.objects.create(person=person, engine=engine.name,
                                             embedding=embedding.tolist(), source='seed')
+            for template in person.templates.filter(photo=''):  # also backfills templates seeded before photos existed
+                template.photo.save(f'seed-{person.uuid}.jpg', ContentFile(encode_jpeg(portrait)), save=True)
             if not person.infractions.exists():
                 create_records(person, scenario, now)
             slug = name.split()[0].lower()
@@ -59,10 +64,11 @@ class Command(BaseCommand):
         for n in range(bulk):
             person, _ = Person.objects.get_or_create(full_name=f'Background Doe {n % 12:02d}')
             category = rng.choice(categories)
+            precinct = rng.choice(PRECINCTS[:3] if rng.random() < 0.7 else PRECINCTS)
             Infraction.objects.create(
                 person=person, category=category, severity=rng.randint(1, 4),
-                occurred_at=now - timedelta(days=rng.randint(1, 56)),
-                precinct=rng.choice(PRECINCTS[:3] if rng.random() < 0.7 else PRECINCTS),
+                occurred_at=now - timedelta(days=rng.randint(1, 56), hours=rng.randint(0, 23), minutes=rng.randint(0, 59)),
+                precinct=precinct, location=place_for(precinct, rng.random()),
                 description='Dummy background record', status=Infraction.Status.CLOSED,
             )
         if users:

@@ -1,25 +1,116 @@
 {% extends "web/base.html" %}
+{% load web_extras %}
 {% block title %}Enroll person{% endblock %}
 {% block content %}
 <div class="pagehead"><div><h1>Enroll a person</h1>
-  <p class="muted" style="margin:0">Capture a face with your webcam and attach a dummy record, so you can test the pipeline end to end.</p></div></div>
-<form class="card" method="post" enctype="multipart/form-data" style="max-width:680px">{% csrf_token %}
+  <p class="muted" style="margin:0">Register a person with the same fields their profile shows. Capture the face with your webcam and attach a dummy record to test the pipeline end to end.</p></div></div>
+<form method="post" enctype="multipart/form-data" style="max-width:900px">{% csrf_token %}
   {% if synthetic %}<p class="notice danger small">Engine is <span class="mono">synthetic</span>: webcam enrolment only works with the real engine. Restart the server without <span class="mono">REDQUEEN_VISION_ENGINE=synthetic</span>.</p>{% endif %}
-  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-  <div class="grid cols-2">
-    <div class="field"><label for="{{ form.full_name.id_for_label }}">Name (use a dummy name)</label>{{ form.full_name }}{{ form.full_name.errors }}</div>
-    <div class="field"><label for="{{ form.date_of_birth.id_for_label }}">Date of birth (optional; sets the age range)</label>{{ form.date_of_birth }}{{ form.date_of_birth.errors }}</div>
-    <div class="field"><label for="{{ form.gender.id_for_label }}">Gender (optional, descriptive only)</label>{{ form.gender }}{{ form.gender.errors }}</div>
-  </div>
-  <div class="field"><label for="{{ form.scenario.id_for_label }}">{{ form.scenario.label }}</label>{{ form.scenario }}{{ form.scenario.errors }}</div>
+  {% if form.non_field_errors %}<ul class="errorlist" style="margin-bottom:1rem">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
 
-  <h3>Face photos</h3>
-  <p class="muted small">Take 2–{{ max_photos }} photos with slightly different head angles. Each must show exactly one face. Only the numeric face template is stored, not the photos.</p>
-  {% include "web/_webcam.html" with input_id=form.photos.id_for_label allow_video=False max_photos=max_photos %}
-  <div class="field"><label for="{{ form.photos.id_for_label }}">…or choose photo files</label>
-    <input type="file" name="photos" id="{{ form.photos.id_for_label }}" accept="image/*" multiple required>{{ form.photos.errors }}</div>
+  <section class="card" aria-labelledby="h-capture">
+    <h2 id="h-capture">Capture the face</h2>
+    <p class="muted small">Take 2–{{ max_photos }} photos with slightly different head angles. Each must show exactly one face. The face embedding is stored together with a cropped image of the face (shown as the registered photo), never the full photo; both are erased with the person.</p>
+    {% include "web/_webcam.html" with input_id=form.photos.id_for_label allow_video=False max_photos=max_photos %}
+    <div class="field" style="margin-bottom:0"><label for="{{ form.photos.id_for_label }}">…or choose photo files</label>
+      <input type="file" name="photos" id="{{ form.photos.id_for_label }}" accept="image/*" multiple required>{{ form.photos.errors }}</div>
+  </section>
 
-  <p class="notice small">Demo only. Enrol your own face, or someone who has agreed. The dummy record is fictional and can be erased from the person page.</p>
+  <section class="card" style="margin-top:1rem" aria-labelledby="h-subject">
+    <h2 id="h-subject">Subject</h2>
+    <div class="subject">
+      <div class="photos" id="subject-photos" aria-live="polite">
+        <div class="photo-placeholder" id="subject-placeholder">No photo captured yet</div>
+      </div>
+      <div>
+        <dl class="kv enroll-fields">
+          <dt>Name</dt><dd>{{ form.full_name }}{{ form.full_name.errors }}<span class="muted small">Use a dummy name.</span></dd>
+          <dt>Person ID</dt><dd class="muted">assigned when you enroll</dd>
+          <dt>Date of birth</dt><dd>{{ form.date_of_birth }}{{ form.date_of_birth.errors }}<span class="muted small" id="age-hint"></span></dd>
+          <dt>Age range</dt><dd>{{ form.age_range }}{{ form.age_range.errors }}<span class="muted small" id="age-range-hint">Derived from the date of birth when one is given.</span></dd>
+          <dt>Gender</dt><dd>{{ form.gender }}{{ form.gender.errors }}<span class="muted small">Optional.</span></dd>
+          <dt>Occurrences</dt><dd><strong id="occurrences">0</strong> <span class="muted small">from the record below</span></dd>
+          <dt>Registered</dt><dd class="muted">{{ now|date:"Y-m-d H:i" }} (when you enroll)</dd>
+          <dt>Face templates</dt><dd><strong id="template-count">0</strong> <span class="muted small">one per photo</span></dd>
+        </dl>
+        <p class="muted small" style="margin:.7rem 0 0">Age range and gender are descriptive only and are never used in the risk outlook.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:1rem" aria-labelledby="h-record">
+    <h2 id="h-record">Record to attach</h2>
+    <div class="field"><label for="{{ form.scenario.id_for_label }}">Dummy scenario</label>{{ form.scenario }}{{ form.scenario.errors }}</div>
+    {% for pv in previews %}
+    <div class="scenario" data-scenario="{{ pv.key }}" data-count="{{ pv.count }}" {% if pv.key != selected_scenario %}hidden{% endif %}>
+      {% if pv.rows %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>Category</th><th>Sev.</th><th>Status</th><th>Penalty</th></tr></thead>
+        <tbody>{% for r in pv.rows %}<tr>
+          <td class="muted">{{ r.days_ago }} days ago</td><td>{{ r.category|capfirst }}</td><td>{{ r.severity }}</td>
+          <td><span class="badge {% if r.open %}moderate{% else %}neutral{% endif %}">{% if r.open %}open{% else %}closed{% endif %}</span>{% if r.convicted %} <span class="badge high">convicted</span>{% endif %}</td>
+          <td>{% if r.penalty %}{{ r.penalty.0|unscore }}{% if r.penalty.1 %} {{ r.penalty.1 }}{% endif %}{% if r.penalty.2 %} {{ r.penalty.2 }}h{% endif %}{% if r.penalty.3 %} {{ r.penalty.3 }}mo{% endif %} <span class="muted">({{ r.penalty.4 }})</span>{% else %}<span class="muted">–</span>{% endif %}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="muted">No infractions: the person is identified later but no suspect profile is built.</p>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+
+  <p class="notice small" style="margin-top:1rem">Demo only. Enrol your own face, or someone who has agreed. The dummy record is fictional and can be erased from the person page.</p>
   <button type="submit">Enroll</button>
 </form>
+<script>
+(function () {
+  var photosInput = document.getElementById('{{ form.photos.id_for_label }}');
+  var box = document.getElementById('subject-photos');
+  var count = document.getElementById('template-count');
+  var urls = [];
+
+  function renderPhotos() {
+    urls.forEach(URL.revokeObjectURL); urls = []; box.textContent = '';
+    var files = Array.prototype.slice.call(photosInput.files || []);
+    count.textContent = files.length;
+    if (!files.length) {
+      var ph = document.createElement('div'); ph.className = 'photo-placeholder'; ph.textContent = 'No photo captured yet';
+      box.appendChild(ph); return;
+    }
+    var main = document.createElement('img'); main.className = 'photo-main'; main.alt = 'Registered photo (preview)';
+    urls.push(URL.createObjectURL(files[0])); main.src = urls[0]; box.appendChild(main);
+    if (files.length > 1) {
+      var row = document.createElement('div'); row.className = 'photo-thumbs';
+      files.forEach(function (f, i) {
+        var t = document.createElement('img'); t.alt = 'Registered photo ' + (i + 1) + ' (preview)';
+        urls.push(URL.createObjectURL(f)); t.src = urls[urls.length - 1]; row.appendChild(t);
+      });
+      box.appendChild(row);
+    }
+  }
+  photosInput.addEventListener('change', renderPhotos);
+
+  // Age range: same buckets as the server (registry.demographics.age_range_for)
+  var dob = document.getElementById('{{ form.date_of_birth.id_for_label }}');
+  var range = document.getElementById('{{ form.age_range.id_for_label }}');
+  var hint = document.getElementById('age-hint');
+  function bucket(years) { return years <= 17 ? '0-17' : years <= 25 ? '18-25' : years <= 40 ? '26-40' : years <= 60 ? '41-60' : '60+'; }
+  function syncAge() {
+    var d = dob.value ? new Date(dob.value + 'T00:00:00') : null, t = new Date();
+    if (!d || isNaN(d) || d > t) { range.disabled = false; hint.textContent = ''; return; }
+    var years = t.getFullYear() - d.getFullYear() - ((t.getMonth() < d.getMonth() || (t.getMonth() === d.getMonth() && t.getDate() < d.getDate())) ? 1 : 0);
+    range.value = bucket(years); range.disabled = true; hint.textContent = ' (' + years + ' years)';
+  }
+  dob.addEventListener('input', syncAge); syncAge();
+
+  // Record preview + occurrences follow the chosen scenario
+  var scenario = document.getElementById('{{ form.scenario.id_for_label }}');
+  var occ = document.getElementById('occurrences');
+  function syncScenario() {
+    document.querySelectorAll('.scenario').forEach(function (el) {
+      var on = el.dataset.scenario === scenario.value; el.hidden = !on;
+      if (on) occ.textContent = el.dataset.count;
+    });
+  }
+  scenario.addEventListener('change', syncScenario); syncScenario(); renderPhotos();
+})();
+</script>
 {% endblock %}

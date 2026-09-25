@@ -113,7 +113,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Dates and hours shown for intakes and occurrences use this zone, e.g. REDQUEEN_TIME_ZONE=America/Sao_Paulo
+TIME_ZONE = os.environ.get('REDQUEEN_TIME_ZONE', 'UTC')
 
 USE_I18N = True
 
@@ -158,6 +159,11 @@ REDQUEEN = {
     'VIDEO_MIN_SUPPORT': 2,
     # Larger images/frames are shrunk to this many pixels on the long side before detection.
     'MAX_IMAGE_SIDE': 1920,
+    # Keep a cropped face image with each enrolment template (shown on profiles). Turn off to keep
+    # only the numeric template.
+    'STORE_ENROLMENT_PHOTOS': True,
+    # After a successful sign-in the hellgate portal is shown for this many seconds before the app opens.
+    'PORTAL_DELAY_SECONDS': 5,
 }
 
 LOGIN_URL = 'login'

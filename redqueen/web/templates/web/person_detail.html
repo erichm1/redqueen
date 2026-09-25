@@ -2,16 +2,17 @@
 {% block title %}{{ person.full_name }}{% endblock %}
 {% block content %}
 <div class="pagehead"><div><h1>{{ person.full_name }}</h1>
-  <p class="muted" style="margin:0">Born {{ person.date_of_birth|default:"unknown" }} · age range {{ person.age_range|default:"unknown" }} · gender {{ person.gender|default:"not recorded" }} · {{ person.total_occurrences }} occurrence{{ person.total_occurrences|pluralize }} · {{ templates_count }} enrolled face template{{ templates_count|pluralize }}</p>
-  <p class="muted small" style="margin:.2rem 0 0">ID <span class="mono">{{ person.uuid }}</span> · age range and gender are descriptive only and are never used in the risk outlook.</p></div>
+  <p class="muted" style="margin:0">Person record</p></div>
   {% if can_delete %}<form method="post" action="{% url 'person-delete' person.pk %}" onsubmit="return confirm('Erase this person, their face data and records, and every intake whose photo or video shows them (including group photos)?');">{% csrf_token %}<button class="secondary" type="submit">Erase person &amp; face data</button></form>{% endif %}</div>
-<section class="card" aria-labelledby="h-risk"><h2 id="h-risk">Risk outlook</h2>{% include "web/_risk.html" %}</section>
+<section class="card" aria-labelledby="h-subject"><h2 id="h-subject">Subject</h2>{% include "web/_subject.html" %}</section>
+<section class="card" style="margin-top:1rem" aria-labelledby="h-risk"><h2 id="h-risk">Risk outlook</h2>{% include "web/_risk.html" %}</section>
+<section class="card" style="margin-top:1rem" aria-labelledby="h-sanc"><h2 id="h-sanc">Record summary</h2>{% include "web/_sanctions.html" %}</section>
 <section class="card" style="margin-top:1rem" aria-labelledby="h-rec"><h2 id="h-rec">Record</h2>{% include "web/_records.html" %}</section>
 {% if appearances %}<section class="card flush" style="margin-top:1rem"><h2>Appearances in intakes</h2>
   <p class="muted small" style="padding:0 1.1rem">Similarity between each intake face and this person's registered face template(s).</p>
   <div class="table-wrap"><table>
-  <thead><tr><th>Intake</th><th>When</th><th>Result</th><th>Similarity</th></tr></thead>
-  <tbody>{% for a in appearances %}<tr><td><a href="{% url 'intake-detail' a.intake_id %}">#{{ a.intake_id }}</a> face {{ a.index }}</td><td>{{ a.intake.created_at|date:"Y-m-d H:i" }}</td><td><span class="badge {{ a.status }}">{{ a.get_status_display }}</span></td><td class="pct">{{ a.similarity_pct }}%</td></tr>{% endfor %}</tbody>
+  <thead><tr><th>Face</th><th>Intake</th><th>When</th><th>Result</th><th>Similarity</th></tr></thead>
+  <tbody>{% for a in appearances %}<tr><td>{% if a.box_x is not None %}<img class="thumb-sm" src="{% url 'intake-face-crop' a.intake_id a.index %}" alt="Face {{ a.index }} from intake {{ a.intake_id }}" loading="lazy">{% else %}–{% endif %}</td><td><a href="{% url 'intake-detail' a.intake_id %}">#{{ a.intake_id }}</a> face {{ a.index }}</td><td>{{ a.intake.created_at|date:"Y-m-d H:i" }}</td><td><span class="badge {{ a.status }}">{{ a.get_status_display }}</span></td><td class="pct">{{ a.similarity_pct }}%</td></tr>{% endfor %}</tbody>
 </table></div></section>{% endif %}
 {% if profiles %}<section class="card flush" style="margin-top:1rem"><h2>Profiles</h2><div class="table-wrap"><table>
   <thead><tr><th>#</th><th>Created</th><th>Status</th></tr></thead>

@@ -1,10 +1,11 @@
 {% extends "web/base.html" %}
+{% load tz web_extras %}
 {% block title %}Intake {{ intake.pk }}{% endblock %}
 {% block content %}
-<div class="pagehead"><div><h1>Intake #{{ intake.pk }}</h1><p class="muted" style="margin:0">{{ intake.created_at|date:"Y-m-d H:i" }} · {{ intake.precinct|default:"no precinct" }} · <span class="badge {{ intake.status }}">{{ intake.get_status_display }}</span></p></div>
+<div class="pagehead"><div><h1>Intake #{{ intake.pk }}</h1><p class="muted" style="margin:0">Captured {{ intake.captured_at|date:"Y-m-d H:i" }} · {{ intake.precinct|default:"no precinct" }}{% if intake.location %} · {{ intake.location }}{% endif %} · <span class="badge {{ intake.status }}">{{ intake.get_status_display }}</span></p></div>
   <a class="btn secondary" href="{% url 'intake-new' %}">Another intake</a></div>
 
-<div class="grid cols-2" style="grid-template-columns: minmax(0, 3fr) minmax(0, 2fr)">
+<div class="grid cols-2" style="grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start">
   <section class="card" aria-label="Media with detected faces">
     {% if intake.media_type == 'video' %}
       {% if intake.annotated %}<img class="annotated" src="{% url 'intake-annotated' intake.pk %}" alt="Annotated frame from the video, each detected face boxed and numbered">
@@ -16,6 +17,23 @@
       <span><i style="background:#e5324b"></i>identified, has a record</span><span><i style="background:#3fb97a"></i>identified, no record</span>
       <span><i style="background:#e0a72b"></i>ambiguous</span><span><i style="background:#a0a0a0"></i>unknown</span>
     </div>
+  </section>
+
+  <div class="grid" style="align-content:start">
+  <section class="card" aria-labelledby="h-incident">
+    <h2 id="h-incident">Incident record</h2>
+    {% get_current_timezone as TZ %}
+    <dl class="kv">
+      <dt>Date</dt><dd>{{ intake.captured_at|date:"Y-m-d" }} <span class="muted">({{ intake.captured_at|date:"l" }})</span></dd>
+      <dt>Time</dt><dd class="mono">{{ intake.captured_at|date:"H:i:s" }} <span class="muted">{{ TZ }}</span></dd>
+      <dt>Hour</dt><dd class="mono">{{ intake.captured_at|date:"H" }}:00 – {{ intake.captured_at|date:"H" }}:59</dd>
+      <dt>Precinct</dt><dd>{{ intake.precinct|default:"–" }}</dd>
+      <dt>Place</dt><dd>{{ intake.location|default:"–" }}</dd>
+      <dt>Coordinates</dt><dd>{% if intake.has_coordinates %}<span class="mono">{{ intake.latitude|floatformat:5 }}, {{ intake.longitude|floatformat:5 }}</span> · <a href="https://www.openstreetmap.org/?mlat={{ intake.latitude|stringformat:'f' }}&amp;mlon={{ intake.longitude|stringformat:'f' }}#map=17/{{ intake.latitude|stringformat:'f' }}/{{ intake.longitude|stringformat:'f' }}" target="_blank" rel="noopener noreferrer">map</a>{% else %}–{% endif %}</dd>
+      <dt>Individuals</dt><dd>{{ identified }} identified{% if unknown_faces %}, {{ unknown_faces }} unidentified{% endif %}</dd>
+      <dt>Occurrences</dt><dd>{{ occurrence_count }} related{% if open_occurrences %} <span class="muted">({{ open_occurrences }} open)</span>{% endif %}</dd>
+      <dt>Submitted</dt><dd class="muted">{{ intake.created_at|date:"Y-m-d H:i" }}{% if intake.submitted_by %} by {{ intake.submitted_by.get_username }}{% endif %}</dd>
+    </dl>
   </section>
 
   <section class="card">
@@ -34,7 +52,43 @@
     <ul class="checklist">{% for p in profiles %}<li><a href="{% url 'profile-detail' p.pk %}">{{ p.person.full_name }}</a> <span class="badge {{ p.status }}">{{ p.get_status_display }}</span></li>{% endfor %}</ul>
     {% endif %}
   </section>
+  </div>
 </div>
+
+<section class="card flush" style="margin-top:1rem" aria-labelledby="h-people">
+  <h2 id="h-people">Individuals involved</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Photo</th><th>Person</th><th>Age range · gender</th><th>Faces</th><th>Similarity</th><th>Occurrences</th><th>Profile</th></tr></thead>
+    <tbody>{% for e in individuals %}<tr>
+      <td>{% if e.photo %}<img class="thumb-sm" src="{% url 'person-photo' e.person.pk e.photo.pk %}" alt="Registered photo of {{ e.person.full_name }}">{% else %}<span class="muted">–</span>{% endif %}</td>
+      <td><a href="{% url 'person-detail' e.person.pk %}">{{ e.person.full_name }}</a><div class="cand mono">{{ e.person.uuid }}</div></td>
+      <td>{{ e.person.age_range|default:"–" }} · {{ e.person.gender|default:"–" }}</td>
+      <td class="mono">{% for n in e.faces %}#{{ n }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td class="pct">{{ e.best.similarity_pct }}%</td>
+      <td>{{ e.occurrences }}{% if e.open %} <span class="badge moderate">{{ e.open }} open</span>{% endif %}</td>
+      <td>{% if e.profile %}<a href="{% url 'profile-detail' e.profile.pk %}">Profile #{{ e.profile.pk }}</a>{% else %}<span class="muted">nothing on record</span>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="7" class="empty">Nobody was identified in this media.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if unknown_faces %}<p class="muted small" style="padding:0 1.1rem 1rem;margin:0">Plus {{ unknown_faces }} face{{ unknown_faces|pluralize }} that could not be identified (see the faces table below).</p>{% endif %}
+</section>
+
+<section class="card flush" style="margin-top:1rem" aria-labelledby="h-occ">
+  <h2 id="h-occ">Occurrences related to this intake</h2>
+  <p class="muted small" style="padding:0 1.1rem;margin:.2rem 0 .6rem">Every occurrence on record for the individuals identified above{% if occurrence_count %}: {{ occurrence_count }} in total{% endif %}. Times are {{ TZ|default:"local" }}.</p>
+  {% for person, items in occurrences %}
+  <h3 style="padding:0 1.1rem;margin:.8rem 0 .3rem"><a href="{% url 'person-detail' person.pk %}">{{ person.full_name }}</a> <span class="muted">· {{ items|length }} occurrence{{ items|length|pluralize }}</span></h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Time</th><th>Hour</th><th>Category</th><th>Sev.</th><th>Precinct</th><th>Place</th><th>Status</th><th>Penalties</th></tr></thead>
+    <tbody>{% for i in items %}<tr>
+      <td class="mono">{{ i.occurred_at|date:"Y-m-d" }}<div class="cand">{{ i.occurred_at|date:"D" }}</div></td>
+      <td class="mono">{{ i.occurred_at|date:"H:i" }}</td><td class="mono">{{ i.occurred_at|date:"H" }}h</td>
+      <td>{{ i.category|capfirst }}</td><td>{{ i.severity }}</td><td>{{ i.precinct|default:"–" }}</td><td>{{ i.location|default:"–" }}</td>
+      <td><span class="badge {% if i.status == 'open' %}moderate{% else %}neutral{% endif %}">{{ i.status }}</span>{% if i.convicted %} <span class="badge high">convicted</span>{% endif %}</td>
+      <td>{% for p in i.penalties.all %}{{ p.kind|unscore }}{% if p.amount %} {{ p.amount }}{% endif %}{% if p.hours %} {{ p.hours }}h{% endif %}{% if p.months %} {{ p.months }}mo{% endif %} <span class="muted">({{ p.status }})</span>{% if not forloop.last %}<br>{% endif %}{% empty %}<span class="muted">–</span>{% endfor %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% empty %}<p class="empty">No occurrences on record for the people identified in this intake.</p>{% endfor %}
+</section>
 
 <section class="card flush" style="margin-top:1rem" aria-labelledby="h-faces">
   <h2 id="h-faces">Faces</h2>

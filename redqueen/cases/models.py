@@ -1,5 +1,7 @@
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from registry.models import Infraction, Penalty, Person
 
@@ -21,7 +23,15 @@ class Intake(models.Model):
 
     media = models.FileField(upload_to='intakes/')
     media_type = models.CharField(max_length=8, choices=MediaType.choices)
+    captured_at = models.DateTimeField(default=timezone.now,
+                                       help_text='When the photo or video was taken (not when it was submitted)')
     precinct = models.CharField(max_length=64, blank=True)
+    location = models.CharField(max_length=255, blank=True, help_text='Place or address where it was captured')
+    latitude = models.FloatField(null=True, blank=True, validators=[MinValueValidator(-90), MaxValueValidator(90)])
+    longitude = models.FloatField(null=True, blank=True, validators=[MinValueValidator(-180), MaxValueValidator(180)])
+    related_occurrences = models.ManyToManyField(
+        Infraction, blank=True, related_name='intakes',
+        help_text='Every occurrence on record for the individuals identified in this intake')
     submitted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
     )
@@ -34,6 +44,10 @@ class Intake(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+    @property
+    def has_coordinates(self):
+        return self.latitude is not None and self.longitude is not None
 
     @property
     def threshold_pct(self):

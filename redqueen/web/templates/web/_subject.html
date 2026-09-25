@@ -1,0 +1,24 @@
+{% load web_extras %}
+<div class="subject">
+  <div class="photos">
+    {% if photos %}
+      <img class="photo-main" src="{% url 'person-photo' person.pk photos.0.pk %}" alt="Registered photo of {{ person.full_name }}">
+      {% if photos|length > 1 %}<div class="photo-thumbs">{% for t in photos %}<img src="{% url 'person-photo' person.pk t.pk %}" alt="Registered photo {{ forloop.counter }} of {{ person.full_name }}">{% endfor %}</div>{% endif %}
+    {% else %}
+      <div class="photo-placeholder">No photo stored{% if templates_count %}<br>({{ templates_count }} face template{{ templates_count|pluralize }} only){% endif %}</div>
+    {% endif %}
+  </div>
+  <div>
+    <dl class="kv">
+      <dt>Name</dt><dd><strong>{{ person.full_name }}</strong></dd>
+      <dt>Person ID</dt><dd class="mono small">{{ person.uuid }}</dd>
+      <dt>Date of birth</dt><dd>{% if person.date_of_birth %}{{ person.date_of_birth|date:"Y-m-d" }} ({{ person.age }} years){% else %}unknown{% endif %}</dd>
+      <dt>Age range</dt><dd>{{ person.age_range|default:"unknown" }}</dd>
+      <dt>Gender</dt><dd>{{ person.gender|default:"not recorded" }}</dd>
+      <dt>Occurrences</dt><dd>{{ person.total_occurrences }}</dd>
+      <dt>Registered</dt><dd>{{ person.created_at|date:"Y-m-d H:i" }}</dd>
+      <dt>Face templates</dt><dd>{{ templates_count }}{% if photos %} · {{ photos|length }} with photo{% endif %}{% if templates_without_photo and photos %} · {{ templates_without_photo }} without{% endif %}</dd>
+    </dl>
+    <p class="muted small" style="margin:.7rem 0 0">Age range and gender are descriptive only and are never used in the risk outlook.</p>
+  </div>
+</div>

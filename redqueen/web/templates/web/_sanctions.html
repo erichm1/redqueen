@@ -1,0 +1,11 @@
+<div class="statgrid">
+  <div><b>{{ sanctions.infractions }}</b><span>infractions ({{ sanctions.open }} open)</span></div>
+  <div><b>{{ sanctions.convictions }}</b><span>convictions</span></div>
+  <div><b>{{ sanctions.fines_total }}</b><span>fines imposed{% if sanctions.fines_outstanding %} · {{ sanctions.fines_outstanding }} outstanding{% endif %}</span></div>
+  <div><b>{{ sanctions.service_hours }} h</b><span>community service · {{ sanctions.service_hours_done }} h done</span></div>
+  <div><b>{{ sanctions.probation_months }} mo</b><span>probation</span></div>
+  <div><b>{{ sanctions.prison_months }} mo</b><span>imprisonment</span></div>
+  <div><b>{{ sanctions.pending }} / {{ sanctions.defaulted }}</b><span>penalties pending / defaulted</span></div>
+  <div><b>{% if sanctions.last %}{{ sanctions.last.occurred_at|date:"Y-m-d" }}{% else %}–{% endif %}</b><span>latest infraction{% if sanctions.first and sanctions.first != sanctions.last %} · first {{ sanctions.first.occurred_at|date:"Y-m-d" }}{% endif %}</span></div>
+</div>
+{% if sanctions.by_category %}<p class="muted small" style="margin:.7rem 0 0">By category: {% for name, n in sanctions.by_category %}{{ name|capfirst }} {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}

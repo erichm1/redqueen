@@ -9,15 +9,40 @@
   <span class="badge {{ profile.status }}" style="font-size:.95rem">{{ profile.get_status_display }}</span>
 </div>
 
-<div class="grid cols-2">
+<section class="card" aria-labelledby="h-subject">
+  <h2 id="h-subject">Subject</h2>
+  {% include "web/_subject.html" %}
+</section>
+
+{% if face %}
+<section class="card" style="margin-top:1rem" aria-labelledby="h-evidence">
+  <h2 id="h-evidence">Match evidence: intake face vs registered profile</h2>
+  <div class="evidence">
+    <figure>
+      {% if face_has_crop %}<img src="{% url 'intake-face-crop' profile.intake_id face.index %}" alt="Face #{{ face.index }} cropped from the submitted media">
+      {% else %}<div class="photo-placeholder">Intake face not available{% if not profile.intake_id %}<br>(source media erased){% endif %}</div>{% endif %}
+      <figcaption>From the intake{% if profile.intake_id %} (<a href="{% url 'intake-detail' profile.intake_id %}">#{{ profile.intake_id }}</a>, face #{{ face.index }}){% endif %}</figcaption>
+    </figure>
+    <div class="vs">
+      <span class="pct">{{ face.similarity_pct }}%</span><span class="muted small">similarity</span>
+      <div class="meter matched" style="margin:.5rem 0" role="img" aria-label="Similarity {{ face.similarity_pct }} percent, threshold {{ profile.intake.threshold_pct }} percent"><span style="width:{{ face.similarity_pct }}%"></span>{% if profile.intake.threshold_pct %}<i class="tick" style="left:{{ profile.intake.threshold_pct }}%"></i>{% endif %}</div>
+      <div class="cand">accepted at ≥ {{ profile.intake.threshold_pct|default:"?" }}%{% if face.support > 1 %}<br>seen in {{ face.support }} frames{% endif %}</div>
+    </div>
+    <figure>
+      {% if photos %}<img src="{% url 'person-photo' person.pk photos.0.pk %}" alt="Registered photo of {{ person.full_name }}">
+        {% if photos|length > 1 %}<div class="strip">{% for t in photos|slice:"1:" %}<img src="{% url 'person-photo' person.pk t.pk %}" alt="Another registered photo of {{ person.full_name }}">{% endfor %}</div>{% endif %}
+      {% else %}<div class="photo-placeholder">No registered photo stored</div>{% endif %}
+      <figcaption>Registered: {{ person.full_name }}</figcaption>
+    </figure>
+  </div>
+  {% if candidates|length > 1 %}<p class="cand" style="margin:.8rem 0 0;text-align:center">Other registered people considered: {% for c in candidates %}{% if c.name != person.full_name %}{{ c.name }} {{ c.pct }}%{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}</p>{% endif %}
+  <p class="muted small" style="margin:.5rem 0 0;text-align:center">Similarity is how alike the model finds the two faces. It is not the probability the identification is correct. A human reviewer should compare the images.</p>
+</section>
+{% endif %}
+
+<div class="grid cols-2" style="margin-top:1rem">
   <section class="card" aria-labelledby="h-val">
     <h2 id="h-val">Validation</h2>
-    {% if face %}<div style="margin-bottom:1rem">
-      <div class="actions" style="justify-content:space-between"><span class="muted small">Face match vs registered profile</span><span class="pct" style="font-size:1.3rem">{{ face.similarity_pct }}%</span></div>
-      <div class="meter matched" role="img" aria-label="Similarity {{ face.similarity_pct }} percent, threshold {{ profile.intake.threshold_pct }} percent"><span style="width:{{ face.similarity_pct }}%"></span>{% if profile.intake.threshold_pct %}<i class="tick" style="left:{{ profile.intake.threshold_pct }}%"></i>{% endif %}</div>
-      <div class="cand" style="margin-top:.3rem">Accepted at ≥ {{ profile.intake.threshold_pct|default:"?" }}% · face #{{ face.index }} in the media{% if face.support > 1 %} · seen in {{ face.support }} frames{% endif %}
-        {% if candidates|length > 1 %}<br>Other registered people: {% for c in candidates %}{% if c.name != profile.person.full_name %}{{ c.name }} {{ c.pct }}%{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}{% endif %}</div>
-    </div>{% endif %}
     <ul class="checklist">{% for c in profile.checks %}
       <li><span class="badge {% if c.passed %}ok{% else %}fail{% endif %}">{% if c.passed %}pass{% else %}fail{% endif %}</span><span><strong>{{ c.name }}</strong> <span class="muted small">{{ c.detail }}</span></span></li>{% endfor %}</ul>
     {% if profile.reviewed_by %}<p class="muted small">Reviewed by {{ profile.reviewed_by.get_username }} on {{ profile.reviewed_at|date:"Y-m-d H:i" }}{% if profile.review_notes %}: “{{ profile.review_notes }}”{% endif %}</p>{% endif %}
@@ -41,9 +66,18 @@
   </section>
 </div>
 
+<section class="card" style="margin-top:1rem" aria-labelledby="h-sanc">
+  <h2 id="h-sanc">Record summary</h2>
+  {% include "web/_sanctions.html" %}
+</section>
+
 <section class="card" style="margin-top:1rem" aria-labelledby="h-rec">
-  <h2 id="h-rec">Record at time of identification</h2>
+  <h2 id="h-rec">Complete record</h2>
   {% include "web/_records.html" %}
+  {% if snapshot_infractions|length != infractions|length or judgments %}
+  <details><summary>Record as it stood when this person was identified ({{ profile.created_at|date:"Y-m-d H:i" }})</summary>
+    {% include "web/_records.html" with infractions=snapshot_infractions timeline=None %}
+  </details>{% endif %}
 </section>
 
 <section class="card" style="margin-top:1rem" aria-labelledby="h-judg">
@@ -97,4 +131,35 @@
       <span>#{{ j.infraction_id }}: {% if j.convicted %}conviction, {% endif %}{{ j.sentence_kind|unscore }} <span class="muted">by {{ j.decided_by.get_username }}{% if j.rationale %}: {{ j.rationale }}{% endif %}</span></span></li>{% endfor %}</ul>
   {% endif %}
 </section>
+
+{% if other_appearances %}
+<section class="card flush" style="margin-top:1rem" aria-labelledby="h-app">
+  <h2 id="h-app">Other appearances in intakes</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Face</th><th>Intake</th><th>When</th><th>Result</th><th>Similarity</th></tr></thead>
+    <tbody>{% for a in other_appearances %}<tr>
+      <td>{% if a.box_x is not None %}<img class="thumb-sm" src="{% url 'intake-face-crop' a.intake_id a.index %}" alt="Face #{{ a.index }} from intake {{ a.intake_id }}" loading="lazy">{% else %}–{% endif %}</td>
+      <td><a href="{% url 'intake-detail' a.intake_id %}">#{{ a.intake_id }}</a> face {{ a.index }}</td><td>{{ a.intake.created_at|date:"Y-m-d H:i" }}</td>
+      <td><span class="badge {{ a.status }}">{{ a.get_status_display }}</span></td><td class="pct">{{ a.similarity_pct }}%</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+
+{% if other_profiles %}
+<section class="card flush" style="margin-top:1rem" aria-labelledby="h-prof">
+  <h2 id="h-prof">Other profiles of this person</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Profile</th><th>Created</th><th>Status</th></tr></thead>
+    <tbody>{% for p in other_profiles %}<tr><td><a href="{% url 'profile-detail' p.pk %}">#{{ p.pk }}</a></td><td>{{ p.created_at|date:"Y-m-d H:i" }}</td><td><span class="badge {{ p.status }}">{{ p.get_status_display }}</span></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+
+{% if events is not None %}
+<section class="card flush" style="margin-top:1rem" aria-labelledby="h-audit">
+  <h2 id="h-audit">Audit trail</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th></tr></thead>
+    <tbody>{% for e in events %}<tr><td class="mono small">{{ e.created_at|date:"Y-m-d H:i" }}</td><td>{{ e.actor.get_username|default:"system" }}</td><td>{{ e.action }}</td><td class="mono small">{{ e.target }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="empty">Nothing logged.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
 {% endblock %}

@@ -4,11 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Dashboard{% endblock %} · RedQueen</title>
+  <link rel="icon" type="image/png" sizes="64x64" href="{% static 'web/favicon.png' %}">
   <link rel="stylesheet" href="{% static 'web/style.css' %}">
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="{% url 'dashboard' %}">RedQueen</a>
+  <a class="brand" href="{% url 'dashboard' %}"><img class="brand-logo" src="{% static 'web/logo.png' %}" alt="" width="38" height="38">RedQueen</a>
   {% if user.is_authenticated %}
   <nav aria-label="Main">
     {% with name=request.resolver_match.url_name %}
@@ -21,7 +22,7 @@
     {% endwith %}
   </nav>
   <div class="userbox">
-    <span>{{ user.get_username }}</span>
+    <a href="{% url 'my-profile' %}" class="{% if request.resolver_match.url_name == 'my-profile' %}active {% endif %}whoami" title="My profile">{{ user.get_username }}</a>
     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn ghost small" type="submit">Log out</button></form>
   </div>
   {% endif %}

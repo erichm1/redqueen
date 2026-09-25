@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from django.db import models
 
@@ -29,6 +30,15 @@ class Person(models.Model):
     def __str__(self):
         return self.full_name
 
+    @property
+    def age(self):
+        """Age in whole years, or None when the date of birth is unknown."""
+        if not self.date_of_birth:
+            return None
+        today = date.today()
+        return today.year - self.date_of_birth.year - (
+            (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+
     def save(self, *args, **kwargs):
         dob = self._meta.get_field('date_of_birth').to_python(self.date_of_birth)  # accepts 'YYYY-MM-DD' too
         self.date_of_birth = dob
@@ -54,6 +64,8 @@ class FaceTemplate(models.Model):
     person = models.ForeignKey(Person, on_delete=models.CASCADE, related_name='templates')
     engine = models.CharField(max_length=64)
     embedding = models.JSONField()
+    photo = models.FileField(upload_to='faces/', blank=True,
+                             help_text='Cropped face image stored at enrolment (blank: template only)')
     source = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -82,6 +94,7 @@ class Infraction(models.Model):
     description = models.TextField(blank=True)
     occurred_at = models.DateTimeField()
     precinct = models.CharField(max_length=64, blank=True)
+    location = models.CharField(max_length=255, blank=True, help_text='Place or address where it happened')
     convicted = models.BooleanField(default=False)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
 

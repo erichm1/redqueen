@@ -1,9 +1,20 @@
 {% extends "web/base.html" %}
-{% load web_extras %}
+{% load static web_extras %}
 {% block title %}Sign in{% endblock %}
 {% block content %}
 <div class="card login">
-  <img class="login-banner" src="{% banner_url %}" alt="RedQueen">
+  {% custom_banner_url as custom_banner %}
+  {% if custom_banner %}<img class="login-banner" src="{{ custom_banner }}" alt="RedQueen">
+  {% else %}
+  <link rel="stylesheet" href="{% static 'web/queen-fx.css' %}">
+  <script type="importmap">{"imports": {"three": "{% static 'web/vendor/three/three.module.min.js' %}", "three/addons/": "{% static 'web/vendor/three/addons/' %}"}}</script>
+  <div class="stage3d" data-stage3d role="img" aria-label="RedQueen: a 3D devil queen in a martial-arts fighting stance">
+    <div class="stage-text" aria-hidden="true"><span class="w1">RED</span><span class="w2">QUEEN</span><small>PRECOG INITIATIVE</small></div>
+    <canvas class="queen-gl" data-queen3d data-module="{% static 'web/queen3d.js' %}" aria-hidden="true"></canvas>
+    <div class="sway"><div class="stage-figure" aria-hidden="true">{% include "web/_queen_stage.html" %}</div></div>
+  </div>
+  <script src="{% static 'web/stage3d.js' %}" defer></script>
+  {% endif %}
   <h1>Sign in</h1>
   <p class="muted small">Authorised personnel only. Access is logged.</p>
   <form method="post">{% csrf_token %}

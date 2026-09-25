@@ -65,3 +65,17 @@ def encode_jpeg(image, quality=90):
     if not ok:
         raise ValueError('Could not encode annotated image')
     return buffer.tobytes()
+
+
+def crop_face(image, box, margin=0.35, max_side=320):
+    """A padded crop around a face box (so hair/chin are visible), shrunk to at most `max_side` pixels."""
+    x, y, w, h = box
+    pad_x, pad_y = int(w * margin), int(h * margin)
+    x0, y0 = max(x - pad_x, 0), max(y - pad_y, 0)
+    x1, y1 = min(x + w + pad_x, image.shape[1]), min(y + h + pad_y, image.shape[0])
+    crop = image[y0:y1, x0:x1]
+    longest = max(crop.shape[:2])
+    if longest > max_side:
+        scale = max_side / longest
+        crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    return crop

@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from rest_framework import serializers
 
 from cases.models import FaceMatch, Intake, Judgment, SuspectProfile
@@ -53,17 +56,97 @@ class FaceMatchSerializer(serializers.ModelSerializer):
         return profile.pk if profile else None
 
 
+class OccurrenceSerializer(serializers.ModelSerializer):
+    """One occurrence (infraction) with when and where it happened."""
+
+    person = serializers.UUIDField(source='person.uuid', read_only=True)
+    person_name = serializers.CharField(source='person.full_name', read_only=True)
+    date = serializers.SerializerMethodField()
+    time = serializers.SerializerMethodField()
+    hour = serializers.SerializerMethodField()
+    penalties = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Infraction
+        fields = ['id', 'person', 'person_name', 'category', 'severity', 'occurred_at', 'date', 'time', 'hour',
+                  'precinct', 'location', 'status', 'convicted', 'penalties']
+
+    def _local(self, obj):
+        return timezone.localtime(obj.occurred_at)
+
+    def get_date(self, obj):
+        return self._local(obj).date().isoformat()
+
+    def get_time(self, obj):
+        return self._local(obj).strftime('%H:%M:%S')
+
+    def get_hour(self, obj):
+        return self._local(obj).hour
+
+    def get_penalties(self, obj):
+        return [{'kind': p.kind, 'amount': p.amount, 'hours': p.hours, 'months': p.months, 'status': p.status}
+                for p in obj.penalties.all()]
+
+
 class IntakeSerializer(serializers.ModelSerializer):
+    """`captured_at` (defaults to now) is when the media was taken; `date`, `time` and `hour` are derived from it
+    in the server time zone. `individuals` are the distinct people identified; `occurrences` all related records."""
+
     faces = FaceMatchSerializer(many=True, read_only=True)
     profiles = ProfileSerializer(many=True, read_only=True)
     threshold_pct = serializers.FloatField(read_only=True)
+    date = serializers.SerializerMethodField()
+    time = serializers.SerializerMethodField()
+    hour = serializers.SerializerMethodField()
+    individuals = serializers.SerializerMethodField()
+    occurrences = OccurrenceSerializer(source='related_occurrences', many=True, read_only=True)
 
     class Meta:
         model = Intake
-        fields = ['id', 'media', 'media_type', 'precinct', 'status', 'engine', 'faces_detected', 'threshold_pct',
-                  'created_at', 'faces', 'profiles']
+        fields = ['id', 'media', 'media_type', 'captured_at', 'date', 'time', 'hour', 'precinct', 'location',
+                  'latitude', 'longitude', 'status', 'engine', 'faces_detected', 'threshold_pct', 'created_at',
+                  'individuals', 'occurrences', 'faces', 'profiles']
         read_only_fields = ['status', 'engine', 'faces_detected', 'created_at']
-        extra_kwargs = {'media_type': {'required': False}}
+        extra_kwargs = {'media_type': {'required': False}, 'captured_at': {'required': False}}
+
+    def validate_captured_at(self, value):
+        if value > timezone.now() + timedelta(minutes=5):
+            raise serializers.ValidationError('The capture time cannot be in the future.')
+        return value
+
+    def validate(self, data):
+        if (data.get('latitude') is None) != (data.get('longitude') is None):
+            raise serializers.ValidationError('Give both latitude and longitude, or neither.')
+        return data
+
+    def _local(self, obj):
+        return timezone.localtime(obj.captured_at)
+
+    def get_date(self, obj):
+        return self._local(obj).date().isoformat()
+
+    def get_time(self, obj):
+        return self._local(obj).strftime('%H:%M:%S')
+
+    def get_hour(self, obj):
+        return self._local(obj).hour
+
+    def get_individuals(self, obj):
+        people = {}
+        for face in obj.faces.all():
+            if face.status != 'matched' or face.person_id is None:
+                continue
+            entry = people.setdefault(face.person_id, {
+                'id': str(face.person.uuid), 'name': face.person.full_name, 'age_range': face.person.age_range,
+                'gender': face.person.gender, 'faces': [], 'similarity_pct': face.similarity_pct,
+                'occurrences': face.person.infractions.count(), 'profile': None})
+            entry['faces'].append(face.index)
+            entry['similarity_pct'] = max(entry['similarity_pct'], face.similarity_pct)
+        for profile in obj.profiles.all():
+            if profile.person_id in people:
+                people[profile.person_id]['profile'] = profile.pk
+        unknown = sum(1 for f in obj.faces.all() if f.status != 'matched')
+        return {'identified': list(people.values()), 'unidentified_faces': unknown}
 
 
 class ReviewSerializer(serializers.Serializer):

@@ -8,6 +8,18 @@ from .models import Infraction, Penalty
 
 C, K, S = Infraction.Category, Penalty.Kind, Penalty.Status
 PRECINCTS = ['P-01 Harbor', 'P-02 Midtown', 'P-03 Old Town', 'P-04 Riverside']
+# Fictional places for the dummy data
+PLACES = {
+    'P-01 Harbor': ['Dock 4, Harbor Road', 'Pier Market', 'Customs Yard, Quay 2'],
+    'P-02 Midtown': ['5th Avenue & Main St', 'Central Station, Platform 3', 'City Bank, 120 Main St'],
+    'P-03 Old Town': ['Cathedral Square', 'Cobble Lane 14', 'Old Town Market'],
+    'P-04 Riverside': ['Riverside Park, north gate', 'Bridge Street 7', 'Riverside Mall, level 2'],
+}
+
+
+def place_for(precinct, seed):
+    import random as _random
+    return _random.Random(seed).choice(PLACES.get(precinct, ['']))
 
 # key: (label, [(days_ago, category, severity, convicted, closed, penalty)])
 # penalty: (kind, amount, hours, months, status) or None
@@ -35,10 +47,13 @@ SCENARIOS = {
 def create_records(person, scenario, now=None):
     now = now or timezone.now()
     for days_ago, category, severity, convicted, closed, penalty in SCENARIOS[scenario][1]:
-        when = now - timedelta(days=days_ago)
+        rng = random.Random(person.full_name + str(days_ago))
+        # a believable time of day too, not the moment the seed ran
+        when = (now - timedelta(days=days_ago)).replace(hour=rng.randint(0, 23), minute=rng.randint(0, 59))
+        precinct = rng.choice(PRECINCTS)
         infraction = Infraction.objects.create(
             person=person, category=category, severity=severity, occurred_at=when,
-            precinct=random.Random(person.full_name + str(days_ago)).choice(PRECINCTS),
+            precinct=precinct, location=place_for(precinct, person.full_name + str(days_ago) + 'place'),
             convicted=convicted, status=Infraction.Status.CLOSED if closed else Infraction.Status.OPEN,
             description=f'Dummy {category} record',
         )

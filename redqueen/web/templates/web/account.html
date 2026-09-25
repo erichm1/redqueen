@@ -1,0 +1,92 @@
+{% extends "web/base.html" %}
+{% load web_extras %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<nav class="small muted" aria-label="Breadcrumb" style="margin-bottom:.6rem">Account <span aria-hidden="true">/</span> <span style="color:var(--text)">{{ account.username }}</span></nav>
+<div class="pagehead">
+  <div class="actions" style="gap:1rem">
+    <span class="avatar" aria-hidden="true">{{ account.get_full_name|default:account.username|slice:":1"|upper }}</span>
+    <div><h1>{{ account.get_full_name|default:account.username }}</h1>
+      <p class="muted" style="margin:0">{{ account.username }}{% if account.email %} · {{ account.email }}{% endif %}</p></div>
+  </div>
+  <div class="actions">
+    {% if account.is_superuser %}<span class="badge validated">Superuser</span>
+    {% elif account.is_staff %}<span class="badge profiled">Staff</span>
+    {% elif not account.is_active %}<span class="badge rejected">Inactive</span>
+    {% else %}<span class="badge neutral">Active</span>{% endif %}
+    <a class="btn secondary" href="{% url 'password_change' %}">Change password</a>
+  </div>
+</div>
+
+<div class="split-7-5">
+  <div class="grid">
+    <form method="post" class="card" aria-labelledby="h-account">{% csrf_token %}
+      <h2 id="h-account">Account</h2>
+      {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      <div class="field"><label for="username">Username</label>
+        <input type="text" id="username" value="{{ account.username }}" disabled aria-describedby="username-help"><span class="muted small" id="username-help">Usernames are set by an administrator.</span></div>
+      <div class="grid cols-2" style="gap:.9rem">
+        <div class="field"><label for="{{ form.first_name.id_for_label }}">First name</label>{{ form.first_name }}{{ form.first_name.errors }}</div>
+        <div class="field"><label for="{{ form.last_name.id_for_label }}">Last name</label>{{ form.last_name }}{{ form.last_name.errors }}</div>
+      </div>
+      <div class="field"><label for="{{ form.email.id_for_label }}">Email</label>{{ form.email }}{{ form.email.errors }}</div>
+      <div class="actions" style="gap:1.6rem;margin-bottom:1rem">
+        <label style="margin:0"><input type="checkbox" disabled {% if account.is_active %}checked{% endif %}>Active</label>
+        <label style="margin:0"><input type="checkbox" disabled {% if account.is_staff %}checked{% endif %}>Staff access</label>
+        <label style="margin:0"><input type="checkbox" disabled {% if account.is_superuser %}checked{% endif %}>Superuser</label>
+      </div>
+      <dl class="kv" style="margin-bottom:1rem">
+        <dt>Last login</dt><dd class="mono">{{ account.last_login|date:"Y-m-d H:i"|default:"never" }}</dd>
+        <dt>Member since</dt><dd class="mono">{{ account.date_joined|date:"Y-m-d" }}</dd>
+      </dl>
+      <div class="actions"><button type="submit">Save changes</button><a class="btn ghost" href="{% url 'dashboard' %}">Cancel</a></div>
+    </form>
+
+    <section class="card" aria-labelledby="h-groups">
+      <h2 id="h-groups">Groups</h2>
+      <p class="muted small">Permissions from these groups apply automatically.</p>
+      <div class="actions">{% for g in groups %}<span class="badge neutral">{{ g.name }}</span>{% empty %}<span class="muted small">You are not in any group.</span>{% endfor %}</div>
+    </section>
+
+    <section class="card" aria-labelledby="h-perms">
+      <h2 id="h-perms">Permissions</h2>
+      <p class="muted small">{% if account.is_superuser %}Superusers bypass all permission checks.{% else %}{{ permissions_granted }} of {{ permissions|length }} granted, directly or through your groups. Only an administrator can change them.{% endif %}</p>
+      <div class="checkgrid" role="list">
+        {% for p in permissions %}<label role="listitem" style="margin:0" class="{% if not p.granted %}muted{% endif %}"><input type="checkbox" disabled {% if p.granted %}checked{% endif %}>{{ p.label }}{% if p.direct and p.granted and not account.is_superuser %} <span class="muted small">(individual)</span>{% endif %}</label>{% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <div class="grid" style="align-content:start">
+    <section class="card" aria-labelledby="h-can">
+      <h2 id="h-can">What you can do in RedQueen</h2>
+      <ul class="checklist">{% for label, ok in capabilities %}<li><span class="badge {% if ok %}ok{% else %}neutral{% endif %}">{% if ok %}yes{% else %}no{% endif %}</span><span {% if not ok %}class="muted"{% endif %}>{{ label }}</span></li>{% endfor %}</ul>
+    </section>
+
+    <section class="card" aria-labelledby="h-access">
+      <h2 id="h-access">About access levels</h2>
+      <ul class="small muted" style="margin:0;padding-left:1.1rem;display:grid;gap:.5rem">
+        <li><strong style="color:var(--text)">Active</strong>: can sign in at all.</li>
+        <li><strong style="color:var(--text)">Staff access</strong>: can use the Django admin.</li>
+        <li><strong style="color:var(--text)">Superuser</strong>: bypasses all permission checks; use sparingly.</li>
+        <li><strong style="color:var(--text)">Groups</strong> are the recommended way to grant access: give a group its permissions once, then add or remove members.</li>
+        <li>Reviewing profiles and applying judgments are separate permissions, so the person who confirms an identity need not be the one who sentences.</li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="h-activity">
+      <h2 id="h-activity">My activity</h2>
+      <div class="statgrid">
+        <div><b>{{ activity.intakes }}</b><span>intakes submitted</span></div>
+        <div><b>{{ activity.reviews }}</b><span>profiles reviewed</span></div>
+        <div><b>{{ activity.judgments }}</b><span>judgments applied</span></div>
+        <div><b>{{ activity.enrolled }}</b><span>people enrolled</span></div>
+        <div><b>{{ activity.logins }}</b><span>sign-ins</span></div>
+      </div>
+      <h3 style="margin-top:1rem">Recent</h3>
+      <ul class="checklist small">{% for e in events %}<li><span class="mono muted">{{ e.created_at|date:"m-d H:i" }}</span><span>{{ e.action }} <span class="muted mono">{{ e.target }}</span></span></li>
+        {% empty %}<li class="muted">Nothing yet.</li>{% endfor %}</ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

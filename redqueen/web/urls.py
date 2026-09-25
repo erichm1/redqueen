@@ -9,6 +9,7 @@ urlpatterns = [
     path('intakes/<int:pk>/', views.intake_detail, name='intake-detail'),
     path('intakes/<int:pk>/media/', views.intake_media, name='intake-media'),
     path('intakes/<int:pk>/annotated/', views.intake_annotated, name='intake-annotated'),
+    path('intakes/<int:pk>/faces/<int:index>/crop/', views.intake_face_crop, name='intake-face-crop'),
     path('profiles/', views.profile_list, name='profile-list'),
     path('profiles/<int:pk>/', views.profile_detail, name='profile-detail'),
     path('profiles/<int:pk>/review/', views.profile_review, name='profile-review'),
@@ -16,6 +17,9 @@ urlpatterns = [
     path('people/', views.person_list, name='person-list'),
     path('people/enroll/', views.person_enroll, name='person-enroll'),
     path('people/<int:pk>/', views.person_detail, name='person-detail'),
+    path('people/<int:pk>/photos/<int:template_pk>/', views.person_photo, name='person-photo'),
     path('people/<int:pk>/delete/', views.person_delete, name='person-delete'),
     path('audit/', views.audit_log, name='audit'),
+    path('account/', views.my_profile, name='my-profile'),
+    path('portal/', views.portal, name='portal'),
 ]

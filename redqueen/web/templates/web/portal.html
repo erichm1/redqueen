@@ -1,0 +1,37 @@
+{% load static web_extras %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessing · RedQueen</title>
+  <meta http-equiv="refresh" content="{{ delay }};url={{ destination }}">
+  <link rel="icon" type="image/png" sizes="64x64" href="{% static 'web/favicon.png' %}">
+  <link rel="stylesheet" href="{% static 'web/portal.css' %}">
+  <script type="importmap">{"imports": {"three": "{% static 'web/vendor/three/three.module.min.js' %}"}}</script>
+</head>
+<body>
+<main class="portal-stage" data-portal data-delay="{{ delay_ms }}" data-destination="{{ destination }}" data-module="{% static 'web/portal3d.js' %}">
+  <div class="css-portal" aria-hidden="true"><i class="swirl s1"></i><i class="swirl s2"></i><i class="abyss"></i></div>
+  <canvas id="gate-canvas" aria-hidden="true"></canvas>
+  <svg class="gate" viewBox="-340 -340 680 680" aria-hidden="true" focusable="false">
+    <defs>
+      <radialGradient id="stone" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#4a2429"/><stop offset=".6" stop-color="#25100f"/><stop offset="1" stop-color="#0d0506"/></radialGradient>
+      <filter id="ember" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.5"/></filter>
+    </defs>
+    <circle r="262" fill="none" stroke="#000" stroke-width="64" opacity=".55" filter="url(#ember)"/>
+    <circle class="gate-ring" r="262" fill="none" stroke="url(#stone)" stroke-width="52"/>
+    {% gate_ornaments %}
+    <circle class="gate-lip-glow" r="236" fill="none" stroke="#ff4a1a" stroke-width="7" filter="url(#ember)"/>
+    <circle class="gate-lip" r="236" fill="none" stroke="#ff7a30" stroke-width="2.5"/>
+    <path class="gate-gem" d="M0 -300L18 -276L0 -252L-18 -276Z"/>
+  </svg>
+  <div class="flash" aria-hidden="true"></div>
+  <section class="accessing" role="status" aria-live="polite">
+    <p class="who">{{ name }}</p>
+    <h1>Accessing<span class="dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></h1>
+    <div class="bar" aria-hidden="true"><i></i></div>
+  </section>
+</main>
+<script src="{% static 'web/portal.js' %}" defer></script>
+</body>
+</html>
