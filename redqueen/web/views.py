@@ -73,6 +73,13 @@ def timeline(snapshot_infractions, width=560, height=120):
 
 # ---------------------------------------------------------------- dashboard
 
+def home(request):
+    """The public front page for anyone who isn't signed in; signed-in users get the COMPSTAT dashboard."""
+    if not request.user.is_authenticated:
+        return render(request, 'web/landing.html')
+    return dashboard(request)
+
+
 @login_required
 def dashboard(request):
     try:

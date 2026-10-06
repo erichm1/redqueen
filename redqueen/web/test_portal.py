@@ -133,3 +133,16 @@ class PortalArtworkTests(TestCase):
         self.assertIn('prefers-reduced-motion', css)
         js = open(finders.find('web/portal.js'), encoding='utf-8').read()
         self.assertIn('if (!reduced) setTimeout', js)                      # no zoom, but the redirect timer is unconditional
+
+
+class LandingPageTests(TestCase):
+    def test_signed_out_visitors_see_the_public_home_page(self):
+        page = self.client.get('/')
+        self.assertContains(page, 'Sign in', status_code=200)
+        self.assertContains(page, 'web/landing.css')
+        self.assertNotContains(page, 'Open cases')   # dashboard content
+
+    def test_signed_in_users_get_the_dashboard(self):
+        user = get_user_model().objects.create_user('landing-user', password='x')
+        self.client.force_login(user)
+        self.assertContains(self.client.get('/'), 'Open cases')

@@ -1,0 +1,109 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RedQueen · Precog Initiative</title>
+  <meta name="description" content="RedQueen turns a photo or video into an identified, reviewed and sentenced case, then reports forward-looking risk COMPSTAT-style.">
+  <link rel="icon" type="image/png" sizes="64x64" href="{% static 'web/favicon.png' %}">
+  <link rel="stylesheet" href="{% static 'web/style.css' %}">
+  <link rel="stylesheet" href="{% static 'web/landing.css' %}">
+</head>
+<body class="lp">
+
+<header class="lp-header">
+  <div class="lp-wrap lp-header-in">
+    <a class="brand" href="{% url 'dashboard' %}">RedQueen</a>
+    <nav class="lp-nav" aria-label="Sections">
+      <a href="#pipeline">Pipeline</a>
+      <a href="#capabilities">Capabilities</a>
+      <a href="#safeguards">Safeguards</a>
+    </nav>
+    <a class="btn" href="{% url 'login' %}">Sign in</a>
+  </div>
+</header>
+
+<main class="lp-main">
+  <section class="lp-hero">
+    <div class="lp-wrap lp-hero-in">
+      <div class="lp-hero-copy">
+        <p class="lp-eyebrow">Precog Initiative</p>
+        <h1>From a single frame to a closed case.</h1>
+        <p class="lp-lead">RedQueen reads faces in a photo or video, matches them against the registry, builds the suspect profile for a human to validate, and reports forward-looking risk the COMPSTAT way.</p>
+        <div class="lp-cta">
+          <a class="btn lp-btn-lg" href="{% url 'login' %}">Sign in</a>
+          <a class="btn ghost lp-btn-lg" href="#pipeline">See how it works</a>
+        </div>
+        <ul class="lp-chips" aria-label="Highlights">
+          <li>Face recognition</li><li>Human review</li><li>Three-precog risk</li><li>Full audit trail</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="pipeline" class="lp-section">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-eyebrow">The pipeline</p>
+        <h2>Five steps, one accountable record</h2>
+      </header>
+      <ol class="lp-steps">
+        <li><span>1</span><h3>Intake</h3><p>Upload a photo or video with its time and place. Every face is detected and boxed.</p></li>
+        <li><span>2</span><h3>Identify</h3><p>Each face is compared with registered portraits and scored by similarity against a threshold.</p></li>
+        <li><span>3</span><h3>Profile</h3><p>A suspect profile gathers the match evidence, the person's record and any other appearances.</p></li>
+        <li><span>4</span><h3>Validate</h3><p>An officer reviews the evidence. A judge applies the judgment and, optionally, a sentence.</p></li>
+        <li><span>5</span><h3>Foresee</h3><p>Three precogs vote on future risk, with any minority report kept in plain sight.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="capabilities" class="lp-section lp-tint">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-eyebrow">Capabilities</p>
+        <h2>Everything a case needs, in one workspace</h2>
+      </header>
+      <div class="lp-cards">
+        <div class="card"><h3>COMPSTAT dashboard</h3><p>Incidents, hot spots, deployment split and a high-risk watchlist over 7, 28, 90 or 365 days.</p></div>
+        <div class="card"><h3>Incident records</h3><p>Date, time, precinct, place and map link, with every individual involved and their related occurrences.</p></div>
+        <div class="card"><h3>Match evidence</h3><p>The intake face cropped beside the registered photo, with similarity, threshold and the other candidates.</p></div>
+        <div class="card"><h3>Webcam enrolment</h3><p>Enrol a face straight from the camera and attach a record, with erasure on request.</p></div>
+        <div class="card"><h3>Sentence guidance</h3><p>Recommendations from the record: fines, service hours, probation or prison, and pending or defaulted penalties.</p></div>
+        <div class="card"><h3>People registry</h3><p>Search people and open their record, photos, risk and every profile they appear in.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="safeguards" class="lp-section">
+    <div class="lp-wrap">
+      <header class="lp-head">
+        <p class="lp-eyebrow">Safeguards</p>
+        <h2>A system that stays answerable</h2>
+      </header>
+      <div class="lp-cards">
+        <div class="card"><h3>Humans decide</h3><p>A match is only a lead. Profiles are validated by a person, and risk scores are advisory.</p></div>
+        <div class="card"><h3>Closed access</h3><p>There is no public sign-up. Accounts are issued by an administrator, and permissions follow the role.</p></div>
+        <div class="card"><h3>Private media</h3><p>Faces and footage are served only to signed-in users, never from a public address.</p></div>
+        <div class="card"><h3>Everything is logged</h3><p>Every action lands in the audit trail, readable by those with the right permission.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-final">
+    <div class="lp-wrap">
+      <h2>Authorised personnel only.</h2>
+      <p class="muted">Sign in with the account your administrator created for you. Access is logged.</p>
+      <a class="btn lp-btn-lg" href="{% url 'login' %}">Sign in to RedQueen</a>
+    </div>
+  </section>
+</main>
+
+<footer class="lp-footer">
+  <div class="lp-wrap lp-footer-in">
+    <a class="brand" href="{% url 'dashboard' %}">RedQueen</a>
+    <p class="muted small">Component of the Precog Initiative. All included data is dummy data.</p>
+    <a href="{% url 'login' %}">Sign in</a>
+  </div>
+</footer>
+</body>
+</html>

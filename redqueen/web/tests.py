@@ -32,7 +32,7 @@ class WebTests(DummyWorldTestCase):
         return self.client.post('/intake/new/', {'media': SimpleUploadedFile(filename, data), 'precinct': 'P-01 Harbor'})
 
     def test_pages_require_login(self):
-        for url in ('/', '/intake/new/', '/intakes/', '/profiles/', '/people/', '/audit/'):
+        for url in ('/intake/new/', '/intakes/', '/profiles/', '/people/', '/audit/'):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302, url)
             self.assertTrue(response['Location'].startswith('/accounts/login/'), url)

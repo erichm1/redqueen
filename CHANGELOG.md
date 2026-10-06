@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Public home page: signed-out visitors now see a landing page at `/` (hero with the 3D queen, the five-step pipeline, capabilities, safeguards, sign-in call to action; `web/landing.html`, `landing.css`) instead of being redirected to sign-in. Signed-in users still get the COMPSTAT dashboard at the same URL (`web.views.home`).
 - Reverted the 3D portal room (the Red Queen beside the gate, 3D "ACCESSING" lettering, name plate and lava progress bar) on request: the portal is back to the 3D gate with the flat message and progress bar.
   `buildQueen()` stays exported from `queen3d.js` (the logo scene uses it); the text/font add-ons were removed again.
 - The RED QUEEN wordmark is now full blood red with a breathing glow: both words on the sign-in banner (RED was white), the top-bar name next to the badge, and the flat `banner.svg`
